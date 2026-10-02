@@ -3,7 +3,7 @@
 > 跨平台 Agent Skill（Claude Code · OpenAI Codex · OpenCode · OpenClaw · WorkBuddy · Cursor · WPS AI · 任意对话式 AI 通用）。
 > 一个**编排层**技能：把 4 个调研能力串成一条流水线，产出**每条结论带一手引用**的结构化调研报告。
 
-**当前版本：v1.3.0**（跨平台通用版 + 4 个捆绑子技能，克隆即完整可用） ｜ [变更日志](./CHANGELOG.md) ｜ [用户手册](./docs/user-guide.md) ｜ [技术手册](./docs/technical-manual.md) ｜ [第三方声明](./THIRD-PARTY-NOTICES.md) ｜ License: MIT
+**当前版本：v1.3.1**（跨平台通用版 + 4 个捆绑子技能，克隆即完整可用） ｜ [变更日志](./CHANGELOG.md) ｜ [用户手册](./docs/user-guide.md) ｜ [技术手册](./docs/technical-manual.md) ｜ [第三方声明](./THIRD-PARTY-NOTICES.md) ｜ License: MIT
 
 ---
 
@@ -101,7 +101,7 @@ cp deep-research-plus-skills/SKILL.md ~/.workbuddy/skills/deep-research-plus/SKI
 
 ```
 deep-research-plus-skills/
-├── SKILL.md                        # 技能主文件 v1.3.0（跨平台编排、分档、闸门、能力降级矩阵）
+├── SKILL.md                        # 技能主文件 v1.3.1（跨平台编排、分档、闸门、能力降级矩阵、反例黑名单、使用示例）
 ├── sub-skills/                     # 捆绑的 4 个子技能（克隆即完整可用）
 │   ├── deep-research/              # 结构化主干：四阶段流程 + 5 个子命令 + 搜索 agent（22 文件）
 │   ├── research/                   # 一手来源调研纪律（单文件）
