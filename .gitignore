@@ -1,0 +1,7 @@
+*.zip
+.DS_Store
+Thumbs.db
+research-benchmark/
+*/results/
+*/outline.yaml
+*/fields.yaml
