@@ -1,0 +1,14 @@
+{
+  "slug": "agent-reach",
+  "name": "Agent Reach",
+  "version": "1.1.0",
+  "installedAt": 1785855369274,
+  "source": "skillhub",
+  "iconSource": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/e9a58ede-ead5-43fd-9523-d1ba7f1b78cd.png",
+  "labels": {
+    "requires_api_key": "false"
+  },
+  "iconLocalPath": "C:\\Users\\iamly\\.workbuddy\\skills\\agent-reach__skillhub\\_icon.png",
+  "iconDownloadedFrom": "https://cloudcache.tencent-cloud.com/qcloud/ui/static/other_external_resource/e9a58ede-ead5-43fd-9523-d1ba7f1b78cd.png",
+  "installedContentHash": "sha256:4516db0b76a0e7bef8123eeb3c2562614c69050aab65f1d748ca5af401dd974f"
+}
