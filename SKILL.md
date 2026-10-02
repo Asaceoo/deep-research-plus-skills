@@ -1,7 +1,7 @@
 ---
 name: deep-research-plus
 description: "深度调研融合编排层：把本机 4 个调研技能串成一条流水线——agent-reach 全网源路由 + research 一手来源引用纪律 + deep-research 结构化主干（大纲→确认→并行深调→反方评审→报告）+ market-researcher 商业标注规范。Use when user asks 深度调研/深度研究/deep research/系统调研一个话题，或需要带引用的结构化调研报告。Triggers: '深度调研', '深度研究', '系统调研', 'deep research', '调研一下 X', '帮我深挖'."
-version: 1.2.0
+version: 1.2.1
 license: MIT
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task, AskUserQuestion
 visibility: "public"
@@ -104,7 +104,7 @@ visibility: "public"
 ## 3. 逐项详析                  # 每 item：事实 → 证据（含 source_type）→ 反证/不确定性
 ## 4. 冲突与存疑                # 多源矛盾点 + 证据绑定降级项 + 官方口径数字，单列不和稀泥
 ## 5. 未覆盖与限制              # 反方评审 2 轮后仍未查到的，如实列出
-## 6. 来源清单                  # 全部 URL 按类型分组
+## 6. 来源清单                  # 全部 URL 按类型分组；必须写完整 https:// 可点击链接（裸域名不算引用），每条带日期
 ```
 
 ### Phase 5 — 交付升级（可选，用户点头才做）

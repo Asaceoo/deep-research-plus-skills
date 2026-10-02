@@ -1,6 +1,6 @@
 # Deep Research Plus 用户手册
 
-> **版本：v1.2.0**（含捆绑子技能，克隆即完整可用）｜ 更新日期：2026-10-02 ｜ 适用平台：WorkBuddy / Claude Code / OpenAI Codex / OpenCode
+> **版本：v1.2.1**（引用格式强化）｜ 更新日期：2026-10-02 ｜ 适用平台：WorkBuddy / Claude Code / OpenAI Codex / OpenCode
 
 ---
 
