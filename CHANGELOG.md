@@ -2,6 +2,18 @@
 
 本项目的所有显著变更记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [1.3.0] - 2026-10-02
+
+### Changed — 跨平台通用化（平台无关化改造）
+- **新增「平台适配层」**：所有平台专属机制改为能力需求 + 降级——网络搜索（必需）/ 网页抓取 / 对话确认 / 子代理并行 / 文件读写（后四项均可降级）
+- frontmatter 移除平台特定 `allowed-tools`；无子代理平台（Cursor/WPS AI 等）主代理逐项串行深调等价实现；无文件能力平台报告分段输出在对话中
+- 子技能检测扩展为多目录（`~/.workbuddy` / `~/.claude` / `~/.codex` / `~/.config/opencode` / 项目 `.skills/`），无法读文件系统时全降级
+- 斜杠命令引用改为自然语言交互描述；报告头部新增「能力组合」声明
+- **反方评审升级**（吸收 2026 引用审计研究）：新增「承重引用内容对照」（77% 引用错误为"链接真但内容不支撑"的误引用）与 `high-risk` 标记（决策级结论仅社区来源支撑）
+
+### 适用平台
+Claude Code / OpenAI Codex / OpenCode / OpenClaw / WorkBuddy / Cursor / WPS AI / 任何能读 Markdown + 联网搜索的智能体
+
 ## [1.2.1] - 2026-10-02
 
 ### Fixed

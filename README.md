@@ -1,9 +1,9 @@
 # Deep Research Plus — 深度调研融合流水线
 
-> 跨平台 Agent Skill（Claude Code · OpenAI Codex · OpenCode · WorkBuddy 通用）。
+> 跨平台 Agent Skill（Claude Code · OpenAI Codex · OpenCode · OpenClaw · WorkBuddy · Cursor · WPS AI · 任意对话式 AI 通用）。
 > 一个**编排层**技能：把 4 个调研能力串成一条流水线，产出**每条结论带一手引用**的结构化调研报告。
 
-**当前版本：v1.2.0**（含 4 个捆绑子技能，克隆即完整可用） ｜ [变更日志](./CHANGELOG.md) ｜ [用户手册](./docs/user-guide.md) ｜ [技术手册](./docs/technical-manual.md) ｜ [第三方声明](./THIRD-PARTY-NOTICES.md) ｜ License: MIT
+**当前版本：v1.3.0**（跨平台通用版 + 4 个捆绑子技能，克隆即完整可用） ｜ [变更日志](./CHANGELOG.md) ｜ [用户手册](./docs/user-guide.md) ｜ [技术手册](./docs/technical-manual.md) ｜ [第三方声明](./THIRD-PARTY-NOTICES.md) ｜ License: MIT
 
 ---
 
@@ -51,11 +51,17 @@ cp -r sub-skills/market-researcher  ~/.workbuddy/skills/
 
 把上面的 `~/.workbuddy` 换成对应平台目录即可适配其他平台：
 
-| 平台 | 技能根目录 |
-|------|-----------|
-| WorkBuddy | `~/.workbuddy/skills/` |
-| Claude Code | `~/.claude/skills/` |
-| Codex / OpenCode | `~/.codex/skills/`（OpenCode 自动扫描 Claude/Codex 目录） |
+| 平台 | 技能根目录 | 执行形态 |
+|------|-----------|----------|
+| WorkBuddy | `~/.workbuddy/skills/` | 完整（并行子代理 + 落盘） |
+| Claude Code | `~/.claude/skills/` | 完整 |
+| OpenAI Codex | `~/.codex/skills/` | 完整 |
+| OpenCode | `~/.config/opencode/skills/`（自动扫描 Claude/Codex 目录） | 完整 |
+| OpenClaw | `~/.openclaw/` | 完整 |
+| Cursor | 项目 `.cursor/rules/` 或项目 `skills/` | 串行深调（无子代理，自动降级） |
+| WPS AI / 任意对话式 AI | 把 SKILL.md 内容粘贴进对话 / 自定义指令 / system prompt | 对话内输出报告（按平台能力降级） |
+
+**通用模式**：v1.3.0 起技能无平台专属工具依赖——只要智能体能**联网搜索 + 对话**即可运行，能力差异由内置降级矩阵吸收（详见技术手册 §1.5）。
 
 **Python 依赖**（仅 deep-research 的校验脚本需要）：`pip install pyyaml`。
 
@@ -86,8 +92,8 @@ cp deep-research-plus-skills/SKILL.md ~/.workbuddy/skills/deep-research-plus/SKI
 
 | 文档 | 内容 |
 |------|------|
-| [用户手册](./docs/user-guide.md) | 安装、触发、分档选择、四阶段体验、报告解读、FAQ（v1.2.0） |
-| [技术手册](./docs/technical-manual.md) | 架构、设计依据（8 方案对标调研）、闸门机制、降级矩阵、扩展指南（v1.2.0） |
+| [用户手册](./docs/user-guide.md) | 安装、触发、分档选择、四阶段体验、报告解读、FAQ（v1.3.0） |
+| [技术手册](./docs/technical-manual.md) | 架构、平台适配层、设计依据（8 方案对标调研）、闸门机制、降级矩阵、扩展指南（v1.3.0） |
 | [第三方声明](./THIRD-PARTY-NOTICES.md) | 捆绑子技能的来源与版权归属 |
 | [变更日志](./CHANGELOG.md) | 版本历史 |
 
@@ -95,15 +101,15 @@ cp deep-research-plus-skills/SKILL.md ~/.workbuddy/skills/deep-research-plus/SKI
 
 ```
 deep-research-plus-skills/
-├── SKILL.md                        # 技能主文件 v1.2.0（编排流程、分档、闸门、降级矩阵）
+├── SKILL.md                        # 技能主文件 v1.3.0（跨平台编排、分档、闸门、能力降级矩阵）
 ├── sub-skills/                     # 捆绑的 4 个子技能（克隆即完整可用）
 │   ├── deep-research/              # 结构化主干：四阶段流程 + 5 个子命令 + 搜索 agent（22 文件）
 │   ├── research/                   # 一手来源调研纪律（单文件）
 │   ├── agent-reach/                # 14 平台社媒源路由
 │   └── market-researcher/          # 商业标注规范
 ├── docs/
-│   ├── user-guide.md               # 用户手册（v1.2.0）
-│   └── technical-manual.md         # 技术手册（v1.2.0）
+│   ├── user-guide.md               # 用户手册（v1.3.0）
+│   └── technical-manual.md         # 技术手册（v1.3.0）
 ├── THIRD-PARTY-NOTICES.md          # 第三方子技能版权声明
 ├── CHANGELOG.md                    # 版本历史
 ├── LICENSE                         # MIT（覆盖编排层，不含 sub-skills/）

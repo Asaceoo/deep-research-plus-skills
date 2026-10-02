@@ -1,6 +1,6 @@
 # Deep Research Plus 用户手册
 
-> **版本：v1.2.1**（引用格式强化）｜ 更新日期：2026-10-02 ｜ 适用平台：WorkBuddy / Claude Code / OpenAI Codex / OpenCode
+> **版本：v1.3.0（跨平台通用版）** ｜ 更新日期：2026-10-02 ｜ 适用平台：Claude Code / OpenAI Codex / OpenCode / OpenClaw / WorkBuddy / Cursor / WPS AI / 任何能读 Markdown 且可联网搜索的智能体
 
 ---
 
@@ -44,11 +44,18 @@ pip install pyyaml
 
 平台技能目录对照：
 
-| 平台 | 技能根目录 |
-|------|-----------|
-| WorkBuddy | `~/.workbuddy/skills/` |
-| Claude Code | `~/.claude/skills/` |
-| Codex / OpenCode | `~/.codex/skills/`（OpenCode 自动扫描 Claude/Codex 目录） |
+| 平台 | 技能根目录 | 说明 |
+|------|-----------|------|
+| WorkBuddy | `~/.workbuddy/skills/` | 子代理并行 + 文件落盘全支持 |
+| Claude Code | `~/.claude/skills/` | 全支持 |
+| OpenAI Codex | `~/.codex/skills/` | 全支持 |
+| OpenCode | `~/.config/opencode/skills/`（自动扫描 Claude/Codex 目录） | 全支持 |
+| OpenClaw | `~/.openclaw/`（技能规范同 Claude） | 全支持 |
+| Cursor | 项目 `.cursor/rules/` 或项目 `skills/` 目录 | 无子代理 → 自动串行深调 |
+| WPS AI | 粘贴 SKILL.md 内容到对话/自定义指令 | 无文件系统 → 报告对话内分段输出 |
+| 通用（任何 AI） | 把 SKILL.md 全文粘贴进 system prompt / 项目规则 / 对话开头 | 按该平台实际能力自动降级 |
+
+**通用模式**（v1.3.0 新增）：技能不再依赖任何平台专属工具。只要智能体能**联网搜索 + 与你对话**就能跑；有子代理则并行、无则串行；能写文件则落盘、不能则对话内输出——报告头部会声明实际使用的"能力组合"。
 
 **验证安装**：对 Agent 说"检查 deep-research-plus 的子技能是否齐全"，它会 Glob 四个子技能路径并报告降级状态。
 
@@ -136,6 +143,9 @@ A: 会跳过正式评审（2-3 条结论做口头核查即可）；标准/深度
 
 **Q: 能调并行度吗？**
 A: 能。Phase 2 确认大纲时直接说"并成 2 路"或"每项独立子代理"。
+
+**Q: 我的 AI 智能体（Cursor/WPS AI/网页版助手）没有子代理和文件系统，能用吗？**
+A: 能（v1.3.0 起）。技能按能力自动降级：无子代理 → 主代理逐项串行深调（每项完成先写小结再搜下一项）；无文件系统 → 报告在对话中分段输出。代价是深度档的并行速度优势消失、报告需手动保存，但流程与质量闸门完整不变。
 
 ## 9. 边界与免责
 
