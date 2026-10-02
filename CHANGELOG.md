@@ -2,6 +2,20 @@
 
 本项目的所有显著变更记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [1.2.0] - 2026-10-02
+
+### Added
+- **捆绑子技能分发**：新增 `sub-skills/` 目录，原样收录全部 4 个依赖子技能——克隆仓库即可零降级完整执行（编排层 + 主干 + 引用纪律 + 源路由 + 商业标注）
+  - deep-research 1.0.0（结构化主干，22 文件中英双版）
+  - research（一手来源调研纪律，单文件）
+  - agent-reach 1.1.0（14 平台社媒源路由）
+  - market-researcher 1.0.1（商业标注规范）
+- `THIRD-PARTY-NOTICES.md`：第三方子技能版权声明（版权归原作者，根 MIT License 不覆盖 sub-skills/）
+- README 安装章节重写：完整安装（一键四技能 + pyyaml 依赖说明）与最小安装（自动降级）双路径
+
+### Changed
+- 编排层 SKILL.md version 1.1.0 → 1.2.0；两份手册头部版本同步；文档结构树补 sub-skills/
+
 ## [1.1.0] - 2026-10-02
 
 ### Added

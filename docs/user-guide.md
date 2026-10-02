@@ -1,6 +1,6 @@
 # Deep Research Plus 用户手册
 
-> **版本：v1.1.0** ｜ 更新日期：2026-10-02 ｜ 适用平台：WorkBuddy / Claude Code / OpenAI Codex / OpenCode
+> **版本：v1.2.0**（含捆绑子技能，克隆即完整可用）｜ 更新日期：2026-10-02 ｜ 适用平台：WorkBuddy / Claude Code / OpenAI Codex / OpenCode
 
 ---
 
@@ -20,21 +20,51 @@ deep-research-plus 是一个**深度调研编排技能**：你说一个话题，
 
 ## 2. 安装
 
+### 完整安装（推荐）
+
+仓库已捆绑全部 4 个子技能（`sub-skills/`），照抄以下命令即可零降级运行：
+
+```bash
+git clone https://github.com/Asaceoo/deep-research-plus-skills.git
+cd deep-research-plus-skills
+
+# 1) 编排层（把 ~/.workbuddy 换成你平台的技能目录，见下表）
+mkdir -p ~/.workbuddy/skills/deep-research-plus
+cp SKILL.md ~/.workbuddy/skills/deep-research-plus/
+
+# 2) 四个子技能
+cp -r sub-skills/deep-research      ~/.workbuddy/skills/
+cp -r sub-skills/research           ~/.workbuddy/skills/
+cp -r sub-skills/agent-reach        ~/.workbuddy/skills/
+cp -r sub-skills/market-researcher  ~/.workbuddy/skills/
+
+# 3) Python 依赖（仅 deep-research 的校验脚本需要）
+pip install pyyaml
+```
+
+平台技能目录对照：
+
+| 平台 | 技能根目录 |
+|------|-----------|
+| WorkBuddy | `~/.workbuddy/skills/` |
+| Claude Code | `~/.claude/skills/` |
+| Codex / OpenCode | `~/.codex/skills/`（OpenCode 自动扫描 Claude/Codex 目录） |
+
+**验证安装**：对 Agent 说"检查 deep-research-plus 的子技能是否齐全"，它会 Glob 四个子技能路径并报告降级状态。
+
+### 最小安装（仅编排层）
+
 ```bash
 git clone https://github.com/Asaceoo/deep-research-plus-skills.git
 mkdir -p ~/.workbuddy/skills/deep-research-plus
 cp deep-research-plus-skills/SKILL.md ~/.workbuddy/skills/deep-research-plus/SKILL.md
 ```
 
-平台路径速查：
+**依赖**：宿主 Agent 需支持 Read / Write / Glob / WebSearch / WebFetch / Task（子代理）/ AskUserQuestion。
 
-| 平台 | 安装路径 |
-|------|----------|
-| WorkBuddy | `~/.workbuddy/skills/deep-research-plus/` |
-| Claude Code | `~/.claude/skills/deep-research-plus/` |
-| Codex / OpenCode | `~/.codex/skills/deep-research-plus/`（OpenCode 自动扫描 Claude/Codex 目录） |
+### 关于捆绑子技能
 
-**可选增强**（装了更强，不装也能跑）：`deep-research`（结构化主干）、`research`（一手来源纪律）、`agent-reach`（14 平台社媒源）、`market-researcher`（商业标注规范）。技能启动时会自动检测这四个子技能，缺失的按降级模式执行并在报告开头注明。
+四个子技能（deep-research / research / agent-reach / market-researcher）已随仓库捆绑在 `sub-skills/`，**版权仍归各自作者**（见 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)）。完整安装后无任何降级；不装也能跑——技能启动时会自动检测子技能，缺失的按降级模式执行并在报告开头注明。
 
 ## 3. 怎么触发
 

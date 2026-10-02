@@ -1,0 +1,19 @@
+{
+  "name": "Deep Research",
+  "installedAt": 1790946028176,
+  "source": "marketplace",
+  "version": "1.0.0",
+  "skillId": "skill_2053082035566706688",
+  "examples_zh": [
+    "调研 AI Agent 2025 最新进展",
+    "对比主流前端框架的技术特点",
+    "分析竞品产品功能差异"
+  ],
+  "examples_en": [
+    "Research AI Agent 2025 developments",
+    "Compare mainstream frontend frameworks",
+    "Analyze competitor product features"
+  ],
+  "iconSource": "letter:auto",
+  "installedContentHash": "sha256:9a62664e7155e5d16f8a16d5d15ecc19a3945d32c8e004f15fedd5ca7e3c9955"
+}

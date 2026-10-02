@@ -1,7 +1,7 @@
 ---
 name: deep-research-plus
 description: "深度调研融合编排层：把本机 4 个调研技能串成一条流水线——agent-reach 全网源路由 + research 一手来源引用纪律 + deep-research 结构化主干（大纲→确认→并行深调→反方评审→报告）+ market-researcher 商业标注规范。Use when user asks 深度调研/深度研究/deep research/系统调研一个话题，或需要带引用的结构化调研报告。Triggers: '深度调研', '深度研究', '系统调研', 'deep research', '调研一下 X', '帮我深挖'."
-version: 1.1.0
+version: 1.2.0
 license: MIT
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task, AskUserQuestion
 visibility: "public"

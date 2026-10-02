@@ -1,6 +1,6 @@
 # Deep Research Plus 技术手册
 
-> **版本：v1.1.0** ｜ 更新日期：2026-10-02 ｜ 面向读者：维护者、二次开发者、想理解内部机制的 Agent
+> **版本：v1.2.0**（新增捆绑子技能分发）｜ 更新日期：2026-10-02 ｜ 面向读者：维护者、二次开发者、想理解内部机制的 Agent
 
 ---
 
@@ -28,6 +28,23 @@ deep-research-plus 是**编排层技能**：自身不含搜索/爬取实现，�
 ```
 
 **设计原则：指针不重复。** 编排层只写"怎么串、按什么纪律串"，子技能的详细流程（如 deep-research 的 outline.yaml schema）以指针引用，避免双份维护漂移。
+
+### 1.1 捆绑子技能分发（v1.2.0 新增）
+
+仓库 `sub-skills/` 目录捆绑 4 个子技能，使克隆即完整可执行：
+
+| 子技能 | 捆绑版本 | 文件数 | 运行时依赖 |
+|--------|----------|--------|-----------|
+| deep-research | 1.0.0 | 20（中英双版 + web-search-agent） | pyyaml（仅 validate_json.py） |
+| research | — | 1 | 无 |
+| agent-reach | 1.1.0 | 4（skill-card + 元数据） | 无 |
+| market-researcher | 1.0.1 | 2 | 无 |
+
+捆绑规则：
+
+- **原样收录**：内容不修改（仅移除 `__pycache__` 等运行时产物），保证与上游行为一致，便于后续跟随上游更新。
+- **版权隔离**：仓库根 MIT License 不覆盖 `sub-skills/`；各子技能版权归原作者，声明见 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)。
+- **升级路径**：跟随上游更新时，整目录替换 `sub-skills/<name>/` 并在 CHANGELOG 记录捆绑版本号变化。
 
 ## 2. 设计依据（8 方案对标调研，2026-10-02）
 
@@ -94,6 +111,7 @@ v1.1.0 的三项核心机制非拍脑袋，来自对 8 个成熟方案的深度�
 
 - **单一来源**：`SKILL.md` frontmatter `version` 字段。
 - **发布操作**：改 SKILL.md → bump version → 同步更新 CHANGELOG.md + 两份手册头部版本 → git tag `vX.Y.Z` → push。
+- **捆绑版本联动**：`sub-skills/` 内任一子技能升级时，编排层 version 升 minor（如捆绑集变化 1.1.0 → 1.2.0），CHANGELOG 记录各子技能捆绑版本号。
 - **递增规则**：语义化版本——编排流程结构性变更升 minor（如 1.1.0 加分档），错字/链接修复升 patch。
 
 ## 6. 扩展指南
