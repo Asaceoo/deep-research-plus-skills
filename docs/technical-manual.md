@@ -1,6 +1,6 @@
 # 技术手册
 
-> 版本：1.5.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.6.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 设计目标与不变量
 
@@ -161,7 +161,7 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | DOC-001/002 | 文档缺版本头/版本不一致 | `bump` 或手工同步 |
 | LIC-001 | 声明 license 无 LICENSE | 补文件 |
 | MAN-001/002 | manifest 版本与 SKILL 不一致 / 名称与目录不一致 | 跑 `bump` 或改 manifest |
-| CHK-001..009 | 清单规则命中 | 按 detail 修 SKILL.md 或补文件 |
+| CHK-001..010 | 清单规则命中 | 按 detail 修 SKILL.md 或补文件 |
 | G-OUT-001..018 | 大纲问题 | 见用户手册 §8 |
 | G-CON-001..005 | 未确认/日期非法/确认人缺失 | 补 confirmed 三件套 |
 | G-RES-001..021 | 证据缺失 / 链接非 https / 日期非法 / 类型非法 / 来源数不足 / 占位链接 / 死链 | 补证据字段或换真实来源 |
@@ -193,6 +193,7 @@ SKILL.md.version  ──bump──▶  manifest.json / README.md / docs/*.md / C
 - **CHANGELOG 重写**：保留空的 `[Unreleased]` 段，新增 `[x.y.z] - 日期` 段，正文取原 Unreleased 条目。
 - **zip 确定性**：文件按路径排序，固定时间戳 `1980-01-01`，deflate level 9，权限 644；同名产物可比对 sha256。
 - **BUILD-MANIFEST.json**：打包瞬间记录每个文件的 sha256 与字节数，位于 zip 根，不写入源目录，避免自我引用。
+- **两份清单的分工**：`manifest.json` 的 `files` 是**人工维护的核心文件清单**（问答「这个包由哪些关键文件构成」）；`BUILD-MANIFEST.json` 是**构建时全量快照**（回答「这个 zip 里到底有什么、有没有被改过」）。两者语义不同，不要互相替代；校验器只强制前者登记的文件存在、版本与 SKILL.md 一致。
 
 ## 9. 测试策略
 
@@ -222,7 +223,7 @@ python scripts/drp.py selfcheck
 1. 不做 URL 存活检测（要求离线可跑）。链接失效靠反方评审人工开页发现。
 2. `yamlmini` 不支持锚点/多文档，复杂 YAML 需装 PyYAML。
 3. 文件时间戳统一为 1980-01-01，zip 内文件时间不反映真实构建时间（换确定性）。
-4. 工作区并发写无锁；同一 `{topic_slug}` 不要两个进程同时跑。
+4. 写命令（report / bump / package）有目录锁，但 agent 自己改 `results/*.yaml` 不走工具，锁管不到；同一 `{topic_slug}` 仍应一个进程处理。
 5. `report` 渲染是确定性模板，不负责改写文风；去 AI 腔靠 `gate` 拦 + 人改。
 6. 轻量档不产 `report.md`，因此 `gate --stage report` 对轻量档不适用（见闸门矩阵）。
 
@@ -241,3 +242,5 @@ python scripts/drp.py selfcheck
 3. `python scripts/drp.py package` 自动递增并出包
 4. 解压到临时目录，`validate` + `version` 复核
 5. 上传源码与 `dist/` 三件套到 Release，正文用 `release-notes-v<版本>.md`
+
+CI 等价路径：提交信息带 `[release]` 推到 main，`.github/workflows/release.yml` 会依次跑 pytest → validate → selfcheck → package，再以 `v<版本>` 建或更新 Release；不带标记时 job 被 `if` 跳过，属预期。

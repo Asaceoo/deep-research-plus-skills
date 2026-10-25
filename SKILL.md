@@ -1,7 +1,7 @@
 ---
 name: deep-research-plus
 description: "深度调研融合编排层：跨平台通用（Claude / Codex / Cursor / WorkBuddy / WPS AI / OpenCode / OpenClaw 等任何能读 Markdown 的智能体）。按话题类型路由信息源（官方一手来源 / 社媒社区信号 / 商业标注规范），跑「大纲→确认→并行深调→反方评审→报告」流水线，每条结论带一手引用，并用内置脚本做阶段闸门硬校验。Use when user asks 深度调研/深度研究/deep research/系统调研一个话题，或需要带引用的结构化调研报告。Triggers: '深度调研', '深度研究', '系统调研', 'deep research', '调研一下 X', '帮我深挖'."
-version: 1.5.0
+version: 1.6.0
 license: MIT
 visibility: "public"
 ---

@@ -1,6 +1,6 @@
 # Deep Research Plus
 
-> 版本：1.5.0 ｜ 更新：2026-10-26
+> 版本：1.6.0 ｜ 更新：2026-10-26
 
 ![version](https://img.shields.io/badge/version-1.4.0-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![python](https://img.shields.io/badge/python-3.8%2B%20%7C%20%E9%9B%B6%E4%BE%9D%E8%B5%96-3776ab)
 
@@ -128,7 +128,7 @@ deep-research-plus/
 ├── scripts/drp.py               # 工具层（单文件，零硬依赖）
 ├── checklists/skill_audit.yaml  # 八条机器规则
 ├── docs/                        # 双手册 + 审查记录 + 概念图
-├── tests/                       # 112 条回归（含失败路径）
+├── tests/                       # 121 条回归（含失败路径）
 ├── sub-skills/                  # 四个子技能（仅仓库，不随 zip）
 └── dist/                        # 发布产物（不入库）
 ```
@@ -136,6 +136,24 @@ deep-research-plus/
 ## 版本号规范
 
 `SKILL.md` 的 `version` 是唯一事实源。`bump` 按 CHANGELOG `[Unreleased]` 判定递增级别（BREAKING → major，feat/新增 → minor，其余 → patch），并同步 `manifest.json`、`README.md`、`docs/*.md` 的版本与更新日期。`package` 先递增再校验，校验不过不出包。
+
+## 发版
+
+本地出包与 CI 发版等价，选一条走：
+
+```bash
+# 本地：自动递增 + 全量校验 + 出包（dist/ 下三件套）
+python scripts/drp.py package
+```
+
+推送带 `[release]` 标记的提交会触发 `.github/workflows/release.yml`：跑 pytest → `validate` → `selfcheck` → `package`，然后以 `v<版本>` 创建或更新 Release，上传 zip / SHA256SUMS / release notes / 双手册 / README。
+
+```bash
+git commit -m "feat: 说明改了什么 [release]"
+git push origin main
+```
+
+也可在仓库 Actions 页手动 Run workflow（`workflow_dispatch`）。**提交信息不带 `[release]` 时 job 会被跳过**，这是刻意设计，避免每次推送都发版。
 
 ## License
 

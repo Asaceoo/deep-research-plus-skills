@@ -30,6 +30,7 @@ import os
 import re
 import shutil
 import sys
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -50,6 +51,10 @@ SUSPECT_URL_MARKERS = (
     "placeholder", "does-not-exist", "/xxx", "tbd", "todo", "待补充",
 )
 SPOT_VERDICTS = ("supports", "contradicts", "blocked")
+# 并发保护：同一目录同时只允许一个写操作
+LOCK_NAME = ".drp-lock"
+LOCK_TTL_SECONDS = 1800
+CLI_COMMANDS = ("validate", "detect", "init", "gate", "report", "bump", "package", "selfcheck", "version")
 
 REQUIRED_REPORT_SECTIONS = (
     "核心结论",
@@ -393,6 +398,62 @@ def compare_semver(left: str, right: str) -> int:
     return (lp > rp) - (lp < rp)
 
 
+class WorkspaceLock:
+    """目录级写锁：同一目录同时只允许一个写操作，过期锁可自动接管。
+
+    用 O_EXCL 创建，避免 TOCTOU；锁文件记录 pid / command / 起始时间。
+    读操作（gate）不加锁，只有 report / bump / package 会写。
+    """
+
+    def __init__(self, directory: Path, command: str, ttl: int = LOCK_TTL_SECONDS, enabled: bool = True):
+        self.directory = Path(directory)
+        self.command = command
+        self.ttl = ttl
+        self.enabled = enabled
+        self.path = self.directory / LOCK_NAME
+        self.held = False
+
+    def __enter__(self):
+        if not self.enabled or not self.directory.exists():
+            return self
+        payload = {
+            "pid": os.getpid(),
+            "command": self.command,
+            "started_at": _dt.datetime.now().isoformat(timespec="seconds"),
+        }
+        try:
+            handle = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            holder = {}
+            try:
+                holder = json.loads(self.path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+            age = time.time() - self.path.stat().st_mtime
+            if age > self.ttl:
+                write_text(self.path, json.dumps(payload, ensure_ascii=False))
+                say(f"[WARN] 接管过期锁（{int(age)}s > {self.ttl}s）：{self.path}")
+            else:
+                raise DrpError(
+                    f"目录被占用：{self.path}（pid={holder.get('pid')} command={holder.get('command')}，"
+                    f"{int(age)}s 前）。确认无并发后删除该文件，或加 --no-lock"
+                )
+        else:
+            with os.fdopen(handle, "w", encoding="utf-8") as stream:
+                json.dump(payload, stream, ensure_ascii=False)
+        self.held = True
+        return self
+
+    def __exit__(self, *exc_info):
+        if self.held and self.path.exists():
+            try:
+                if json.loads(self.path.read_text(encoding="utf-8")).get("pid") == os.getpid():
+                    self.path.unlink()
+            except Exception:
+                pass
+        return False
+
+
 class Issue:
     __slots__ = ("code", "severity", "location", "message", "hint")
 
@@ -722,6 +783,30 @@ def check_required_patterns(body: str, params: dict, rule_id: str, severity: str
     return issues
 
 
+def check_commands_exist(body: str, params: dict, rule_id: str, severity: str) -> list:
+    """SKILL.md 里写的 drp.py 子命令与 gate 阶段必须真实存在，防文档跑在实现前面。"""
+    issues = []
+    for match in re.finditer(r"drp\.py\s+([a-zA-Z][\w-]*)", body):
+        sub = match.group(1)
+        if sub not in CLI_COMMANDS:
+            issues.append(
+                Issue(
+                    rule_id,
+                    severity,
+                    "SKILL.md",
+                    f"引用了不存在的子命令：drp.py {sub}",
+                    f"已实现：{', '.join(CLI_COMMANDS)}",
+                )
+            )
+    for match in re.finditer(r"--stage\s+([a-zA-Z][\w-]*)", body):
+        stage = match.group(1)
+        if stage not in GATES and stage != "all":
+            issues.append(
+                Issue(rule_id, severity, "SKILL.md", f"引用了不存在的闸门阶段：--stage {stage}")
+            )
+    return issues
+
+
 def check_test_prompts(skill_dir: Path, params: dict, rule_id: str, severity: str) -> list:
     """test-prompts.json：消费者回归用例必须存在且含歧义场景。"""
     issues = []
@@ -759,6 +844,7 @@ RULE_HANDLERS = {
     "manifest_files_exist": lambda skill_dir, body, params, rid, sev: check_manifest(skill_dir, params, rid, sev),
     "gate_matrix": lambda skill_dir, body, params, rid, sev: check_gate_matrix(body, params, rid, sev),
     "test_prompts_present": lambda skill_dir, body, params, rid, sev: check_test_prompts(skill_dir, params, rid, sev),
+    "commands_exist": lambda skill_dir, body, params, rid, sev: check_commands_exist(body, params, rid, sev),
 }
 
 
@@ -1556,9 +1642,10 @@ def cmd_report(args) -> int:
     workspace = Path(args.workspace).resolve()
     if not (workspace / "outline.yaml").exists():
         raise DrpError(f"缺少 outline.yaml：{workspace}")
-    content = render_report(workspace)
-    out = Path(args.out) if args.out else workspace / "report.md"
-    write_text(out, content)
+    with WorkspaceLock(workspace, "report", enabled=not getattr(args, "no_lock", False)):
+        content = render_report(workspace)
+        out = Path(args.out) if args.out else workspace / "report.md"
+        write_text(out, content)
     if args.json:
         jprint({"report": str(out), "bytes": len(content.encode("utf-8"))})
     else:
@@ -1678,7 +1765,8 @@ def cmd_bump(args) -> int:
         else:
             say(f"{current} -> {new_version}（{level}，dry-run）")
         return 0
-    changed = apply_version(skill_dir, new_version)
+    with WorkspaceLock(skill_dir, "bump", enabled=not getattr(args, "no_lock", False)):
+        changed = apply_version(skill_dir, new_version)
     if args.json:
         jprint({"from": current, "to": new_version, "level": level, "changed_files": changed})
     else:
@@ -1790,6 +1878,11 @@ def write_release_notes(skill_dir: Path, out_dir: Path, version: str, zip_path: 
 def _package_impl(args) -> int:
     skill_dir = Path(args.skill_dir).resolve()
     out_dir = Path(args.out).resolve() if args.out else skill_dir / "dist"
+    with WorkspaceLock(skill_dir, "package", enabled=not getattr(args, "no_lock", False)):
+        return _package_run(args, skill_dir, out_dir)
+
+
+def _package_run(args, skill_dir: Path, out_dir: Path) -> int:
     before = read_version(skill_dir)
     if args.no_bump:
         version = before
@@ -1999,12 +2092,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_report = sub.add_parser("report", help="渲染报告")
     p_report.add_argument("--workspace", required=True)
     p_report.add_argument("--out", default="")
+    p_report.add_argument("--no-lock", action="store_true", help="跳过并发锁")
     _shared(p_report)
     p_report.set_defaults(func=cmd_report)
 
     p_bump = sub.add_parser("bump", help="递增版本并同步文档")
     p_bump.add_argument("--level", default="auto", choices=["auto", "major", "minor", "patch"])
     p_bump.add_argument("--dry-run", action="store_true")
+    p_bump.add_argument("--no-lock", action="store_true", help="跳过并发锁")
     _shared(p_bump)
     p_bump.set_defaults(func=cmd_bump)
 
@@ -2013,6 +2108,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_pkg.add_argument("--level", default="auto", choices=["auto", "major", "minor", "patch", "none"])
     p_pkg.add_argument("--no-bump", action="store_true")
     p_pkg.add_argument("--force", action="store_true", help="校验失败仍打包（仅调试用）")
+    p_pkg.add_argument("--no-lock", action="store_true", help="跳过并发锁")
     _shared(p_pkg)
     p_pkg.set_defaults(func=_package_impl)
 

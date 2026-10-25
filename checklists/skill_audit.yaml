@@ -66,3 +66,8 @@ rules:
       path: test-prompts.json
       min_prompts: 3
       min_anomaly: 1
+  - id: CHK-010
+    type: commands_exist
+    severity: P1
+    desc: SKILL.md 里的 drp.py 子命令与 gate 阶段必须真实存在
+    hint: 文档写着实现里没有的命令，模型照抄就会撞墙

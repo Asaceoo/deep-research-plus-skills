@@ -1,6 +1,6 @@
 {
   "name": "deep-research-plus",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "entry": "SKILL.md",
   "license": "MIT",
   "updated_at": "2026-10-26",
@@ -40,5 +40,6 @@
     "docs/assets/pipeline.svg",
     "docs/assets/degradation.svg",
     "docs/assets/artifacts.svg"
-  ]
+  ],
+  "files_note": "files 是人工维护的核心文件清单；完整快照（含 sha256 与字节数）由打包生成的 BUILD-MANIFEST.json 提供，两者语义不同，勿互相替代"
 }

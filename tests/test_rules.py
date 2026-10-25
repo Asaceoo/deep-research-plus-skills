@@ -156,6 +156,41 @@ def test_test_prompts_ok(drp_module, skill_dir):
     assert issues == []
 
 
+def test_commands_exist_rejects_unknown_subcommand(drp_module, skill_dir):
+    body = "跑 `python scripts/drp.py gat --stage outline`。"
+    issues = run(
+        drp_module,
+        skill_dir,
+        body,
+        [{"id": "CHK-C", "type": "commands_exist", "severity": "P1", "params": {}}],
+    )
+    assert ids(issues) == ["CHK-C"]
+    assert "gat" in issues[0].message
+
+
+def test_commands_exist_rejects_unknown_stage(drp_module, skill_dir):
+    body = "`python scripts/drp.py gate --stage audit`"
+    issues = run(
+        drp_module,
+        skill_dir,
+        body,
+        [{"id": "CHK-C", "type": "commands_exist", "severity": "P1", "params": {}}],
+    )
+    assert ids(issues) == ["CHK-C"]
+    assert "audit" in issues[0].message
+
+
+def test_commands_exist_accepts_real_plan(drp_module, skill_dir):
+    body = "`drp.py validate` `drp.py gate --stage results --check-links` `drp.py package`"
+    issues = run(
+        drp_module,
+        skill_dir,
+        body,
+        [{"id": "CHK-C", "type": "commands_exist", "severity": "P1", "params": {}}],
+    )
+    assert issues == []
+
+
 def test_checklist_file_missing(drp_module, skill_dir):
     import pytest
 

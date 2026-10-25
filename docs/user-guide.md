@@ -1,6 +1,6 @@
 # 用户手册
 
-> 版本：1.5.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.6.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 这个技能替你做什么
 
@@ -168,6 +168,7 @@ JSON 输出：任意子命令后加 `--json`，便于接 CI 或其它 agent。
 | 报 G-RES-019 | 用了占位域名或示例链接 | 换成真实可访问链接 |
 | 报 G-REV-013 | 决策级结论没记录「开页核对」 | 在 `review.yaml` 的 `spot_checks` 补一条 |
 | 报 G-REP-010/011 | 报告缺数据截点或来源未分组 | 重跑 `drp.py report`（渲染器已自动带） |
+| 报「目录被占用」 | 另一个进程正在对同一目录做 report/bump/package | 等它跑完；确认无并发后删 `.drp-lock`，或加 `--no-lock` |
 | 报 MAN-001 | `manifest.json` 版本和 `SKILL.md` 不一致 | 跑一次 `drp.py bump --level patch` 同步 |
 | `report` 后 gate 报 G-REP-005 | 尾注缺链接 | 检查 `review.yaml` 的 evidence id 是否存在 |
 | Windows 控制台中文乱码 | 终端编码非 UTF-8 | 脚本已强制 UTF-8 输出；仍有乱码时 `chcp 65001` |

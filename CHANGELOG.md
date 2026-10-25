@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-26
+
+- 加目录锁：`report` / `bump` / `package` 三个写命令对同一目录互斥，锁文件 `.drp-lock` 记录 pid 与命令，超 30 分钟视为过期自动接管，`--no-lock` 可跳过
+- 清单加 CHK-010（`commands_exist`）：SKILL.md 里出现的 `drp.py <子命令>` 与 `--stage <阶段>` 必须真实存在，防止文档跑在实现前面
+- `manifest.json` 补 `files_note`：写明它与 `BUILD-MANIFEST.json` 的分工——前者是人工维护的核心清单，后者是构建时全量快照
+- README 补「发版」章节：`[release]` 提交约定、CI 流水线顺序、手动触发方式；技术手册 §12 同步
+- 测试 112 → 121 条（新增锁的阻塞/接管/异常释放/禁用、命令真实性三例）
+
 ## [1.5.0] - 2026-10-26
 
 - **来源覆盖率下限**：每个 item 的独立 URL 数必须 ≥ 档位基数（light 1 / standard 2 / deep 3）+ 反方条目 1，`min_sources` 可显式覆盖；只搜一次就落盘会被 G-RES-017 拦下
