@@ -783,6 +783,27 @@ def check_required_patterns(body: str, params: dict, rule_id: str, severity: str
     return issues
 
 
+def check_max_bytes(skill_dir: Path, params: dict, rule_id: str, severity: str) -> list:
+    """文件体积上限：SKILL.md 是常驻上下文，涨上去要显式解释，不能悄悄膨胀。"""
+    rel = str(params.get("path") or "SKILL.md")
+    limit = int(params.get("max_bytes") or 20480)
+    path = skill_dir / rel
+    if not path.exists():
+        return [Issue(rule_id, "P1", rel, "文件不存在")]
+    size = path.stat().st_size
+    if size > limit:
+        return [
+            Issue(
+                rule_id,
+                severity,
+                rel,
+                f"{size} 字节超过上限 {limit}（超出 {size - limit}）",
+                "把细节移到 references/ 或 docs/，正文只留指针",
+            )
+        ]
+    return []
+
+
 def check_commands_exist(body: str, params: dict, rule_id: str, severity: str) -> list:
     """SKILL.md 里写的 drp.py 子命令与 gate 阶段必须真实存在，防文档跑在实现前面。"""
     issues = []
@@ -845,6 +866,7 @@ RULE_HANDLERS = {
     "gate_matrix": lambda skill_dir, body, params, rid, sev: check_gate_matrix(body, params, rid, sev),
     "test_prompts_present": lambda skill_dir, body, params, rid, sev: check_test_prompts(skill_dir, params, rid, sev),
     "commands_exist": lambda skill_dir, body, params, rid, sev: check_commands_exist(body, params, rid, sev),
+    "max_bytes": lambda skill_dir, body, params, rid, sev: check_max_bytes(skill_dir, params, rid, sev),
 }
 
 
@@ -1788,6 +1810,7 @@ PACKAGE_INCLUDE = (
     "test-prompts.json",
     "scripts",
     "checklists",
+    "references",
     "docs",
 )
 SKIP_DIRS = {"__pycache__", ".pytest_cache", ".git", "dist", "tests", ".github", ".workbuddy"}

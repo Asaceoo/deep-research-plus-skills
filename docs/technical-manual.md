@@ -1,6 +1,6 @@
 # 技术手册
 
-> 版本：1.6.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.6.1 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 设计目标与不变量
 
@@ -18,7 +18,11 @@
 ```
 SKILL.md                 技能入口，只写「怎么串」+ 能力矩阵 + 闸门矩阵
 checklists/
-  skill_audit.yaml       八条机器规则（文本层约束）
+  skill_audit.yaml       十一条机器规则（文本层约束）
+  fixtures/pass/         随包发布的精简 fixture（selfcheck 用）
+references/
+  report-template.md     Phase 4 六章模板与硬性规则
+  usage-examples.md      四类话题完整执行示例
 scripts/
   drp.py                 单文件工具层
     ├── YAML 层          PyYAML 优先 / yamlmini 子集兜底
@@ -147,6 +151,8 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | `claim_requires_dir` | "已捆绑"类声明必须目录真实存在 | `claims[].pattern/requires_dir` |
 | `manifest_files_exist` | manifest 字段齐全 + 登记文件存在 | `required_keys` |
 | `test_prompts_present` | 消费者回归用例存在且含 anomaly 场景 | `path`、`min_prompts`、`min_anomaly` |
+| `commands_exist` | SKILL.md 里的 `drp.py <子命令>` / `--stage <阶段>` 必须真实存在 | 无 |
+| `max_bytes` | 文件体积上限（常驻上下文防膨胀） | `path`、`max_bytes` |
 
 扩展方式：实现 `check_xxx(skill_dir, body, params, rule_id, severity)`，注册进 `RULE_HANDLERS`，再写清单条目。
 **未注册的 type 会产出 `CHK-000` P1**，这是刻意设计：清单加错字不能导致"检查通过"。
@@ -161,7 +167,7 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | DOC-001/002 | 文档缺版本头/版本不一致 | `bump` 或手工同步 |
 | LIC-001 | 声明 license 无 LICENSE | 补文件 |
 | MAN-001/002 | manifest 版本与 SKILL 不一致 / 名称与目录不一致 | 跑 `bump` 或改 manifest |
-| CHK-001..010 | 清单规则命中 | 按 detail 修 SKILL.md 或补文件 |
+| CHK-001..011 | 清单规则命中 | 按 detail 修 SKILL.md 或补文件 |
 | G-OUT-001..018 | 大纲问题 | 见用户手册 §8 |
 | G-CON-001..005 | 未确认/日期非法/确认人缺失 | 补 confirmed 三件套 |
 | G-RES-001..021 | 证据缺失 / 链接非 https / 日期非法 / 类型非法 / 来源数不足 / 占位链接 / 死链 | 补证据字段或换真实来源 |

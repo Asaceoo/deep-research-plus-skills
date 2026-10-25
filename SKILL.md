@@ -1,17 +1,27 @@
 ---
 name: deep-research-plus
 description: "深度调研融合编排层：跨平台通用（Claude / Codex / Cursor / WorkBuddy / WPS AI / OpenCode / OpenClaw 等任何能读 Markdown 的智能体）。按话题类型路由信息源（官方一手来源 / 社媒社区信号 / 商业标注规范），跑「大纲→确认→并行深调→反方评审→报告」流水线，每条结论带一手引用，并用内置脚本做阶段闸门硬校验。Use when user asks 深度调研/深度研究/deep research/系统调研一个话题，或需要带引用的结构化调研报告。Triggers: '深度调研', '深度研究', '系统调研', 'deep research', '调研一下 X', '帮我深挖'."
-version: 1.6.0
+version: 1.6.1
 license: MIT
 visibility: "public"
 ---
 
 ## 中文备注
 - **一句话**：深度调研总编排——按话题类型路由到最合适的源（官方文档走一手来源、社媒舆情走社区信号、商业分析走标注规范），产出每条结论带引用的 Markdown 报告，并用脚本闸门卡住"没证据就下结论"。
-- **适用场景**：系统调研一个技术话题/产品/行业、工具横评、竞品分析、选型对比、舆情洞察——比单次搜索深、比普通 deep research 多源且带一手引用。
-- **类别**：调研（编排层）｜ **跨平台**：无平台专属工具硬依赖，能力缺失逐项降级。
-- **注意**：本技能是编排层，不复制子技能正文；子技能缺失时降级为内置搜索多路深调；商业类结论必须带来源+日期，缺数据标 `partial`，禁止编造。
+- **适用场景**：技术/产品/行业/舆情调研、工具横评、竞品分析、选型对比——比单次搜索深、比普通 deep research 多源且带一手引用。
+- **类别**：调研（编排层）｜ 跨平台：无平台专属硬依赖，缺什么降一级。
+- **注意**：编排层不复制子技能正文；商业结论必须带来源+日期，缺数据标 `partial`，禁止编造。
 <!-- /中文备注 -->
+
+## 包内导航
+
+| 需要什么 | 去哪里 |
+|----------|--------|
+| 阶段闸门与全部子命令 | `scripts/drp.py`（`--help` 看参数） |
+| 文本层的机器规则 | `checklists/skill_audit.yaml` |
+| 报告六章模板与硬性规则 | `references/report-template.md` |
+| 四类话题完整执行示例 | `references/usage-examples.md` |
+| 安装/故障排查 ↔ 数据契约/错误码 | `docs/user-guide.md` ↔ `docs/technical-manual.md` |
 
 # Deep Research Plus — 深度调研融合流水线（跨平台通用版）
 
@@ -42,9 +52,8 @@ visibility: "public"
 | `agent-reach` | 源路由扩展：Twitter/Reddit/YouTube/B站/小红书/微博/GitHub issue 等 14 平台 | 同上 | 跳过社媒源，仅通用搜索 |
 | `market-researcher` | 商业标注规范：来源+日期、定量暴露假设、缺数据标 partial | 同上 | 跳过，按通用引用规范 |
 
-**检测方法**：跑 `python scripts/drp.py detect`，脚本按 `~/.workbuddy/skills/`、`~/.claude/skills/`、`~/.codex/skills/`、`~/.config/opencode/skills/`、项目内 .skills 与 skills 目录、技能根下 sub-skills 目录的顺序探测，输出命中路径与降级清单。
-**无法执行脚本时**：按上表手工确认一遍，缺哪个按降级列执行；无法读文件系统则按全降级模式跑。
-**分发边界**：源码仓库随附 sub-skills 目录（版权归原作者，见 THIRD-PARTY-NOTICES.md），克隆安装即零降级；发布 zip 只含编排层，不含子技能，从 zip 安装时 detect 会列出降级项。
+**检测**：跑 `python scripts/drp.py detect`，按 `~/.workbuddy/skills/`、`~/.claude/skills/`、`~/.codex/skills/`、`~/.config/opencode/skills/`、项目内 .skills 与 skills、技能根下 sub-skills 的顺序探测并输出降级清单；无法执行脚本就按上表手工确认，无法读文件系统则全降级。
+**分发边界**：源码仓库随附 sub-skills（版权见 THIRD-PARTY-NOTICES.md），克隆安装零降级；发布 zip 只含编排层，从 zip 安装时 detect 会列出降级项。
 
 ## 机器契约（工具层）
 
@@ -53,7 +62,6 @@ visibility: "public"
 | 命令 | 作用 | 失败含义 |
 |------|------|----------|
 | `python scripts/drp.py validate` | 校验技能包：frontmatter、悬空路径、文档版本一致、清单规则 | 技能包自身损坏，禁止发布 |
-| `python scripts/drp.py detect` | 探测四个依赖子技能并给出降级方案 | 仅提示，不阻断 |
 | `python scripts/drp.py init --workspace <dir> --topic "<话题>"` | 生成 outline.yaml / fields.yaml / review.yaml 骨架 | 目录非空且未加 --force |
 | `python scripts/drp.py gate --workspace <dir> --stage outline` | Phase 1 预检：条目互斥、反方条目存在、字段已定义 | 大纲不合格，返工 |
 | `python scripts/drp.py gate --stage confirm` | Phase 2 闸门：确认已落盘且含时间与人 | 用户未确认就开跑 |
@@ -178,20 +186,9 @@ corrections:
 
 ### Phase 4 — 汇总报告
 
-`python scripts/drp.py report --workspace <dir>` 渲染 `report.md`，再跑 `gate --stage report` 校验。强制结构：
+`python scripts/drp.py report --workspace <dir>` 按 `references/report-template.md` 渲染六章报告，再跑 `gate --stage report`。六章固定为：核心结论 / 对比总表 / 逐项详析 / 冲突与存疑 / 未覆盖与限制 / 来源清单。缺章（G-REP-002）、尾注断链（G-REP-004）、裸域名（G-REP-007）、AI 腔（G-REP-008）都会被拦。
 
-```markdown
-# <话题> 深度调研报告
-> 调研日期：YYYY-MM-DD ｜ 方法：deep-research-plus vX（分档：standard/deep）｜ 能力组合：并行/串行+抓取/摘要级 ｜ 评审：反方评审已过
-## 1. 核心结论（TL;DR）        # 每条结论尾注 [^n] 引用，单源标 single-source，高风险标 high-risk
-## 2. 对比总表                  # 所见即最新，注明数据截点
-## 3. 逐项详析                  # 每 item：事实 → 证据（含 source_type）→ 反证/不确定性
-## 4. 冲突与存疑                # 多源矛盾点 + 证据绑定降级项 + 官方口径数字，单列不和稀泥
-## 5. 未覆盖与限制              # 反方评审 2 轮后仍未查到的，如实列出
-## 6. 来源清单                  # 全部 URL 按类型分组；必须写完整 https:// 可点击链接，每条带日期
-```
-
-无文件能力时按同样六章结构分段输出在对话，尾注改为行内链接。
+无文件能力时按同样六章分段输出在对话，尾注改为行内链接，报告头标 `manual-gate`。
 
 ### Phase 5 — 交付升级（可选，用户点头才做）
 
@@ -202,8 +199,8 @@ corrections:
 
 ## 闸门矩阵（按档位）
 
-| 档位 | Phase 1 outline 闸门 | Phase 2 confirm 闸门 | Phase 3 results 闸门 | Phase 3.5 review 闸门 | Phase 4 report 闸门 | 允许的省略 |
-|------|----------------------|----------------------|----------------------|------------------------|---------------------|------------|
+| 档位 | outline | confirm | results | review | report | 允许的省略 |
+|------|---------|---------|---------|--------|--------|------------|
 | `light` | 必跑（`gate --stage outline`） | 口头确认 + `confirmed: true` | 必跑 | 自查 2 条结论，不落 review.yaml | 不适用：产出对话答复，不落 report.md | 子代理、HTML 升级、review.yaml |
 | `standard` | 必跑 | 必跑 | 必跑 | 必跑（`rounds` ≤2） | 必跑 | 子代理可换串行 |
 | `deep` | 必跑 | 必跑 | 必跑 | 必跑 + 承重引用逐条开页核对 | 必跑 | 仅 HTML 升级按需 |
@@ -215,7 +212,7 @@ corrections:
 | # | 反模式 | 替代做法 |
 |---|--------|----------|
 | R1 | 大纲只收正面证据 | 每份大纲必须含 1-2 个反方 item（Phase 1 预检强制） |
-| R2 | AI 腔行文：套话（"值得注意的是/总而言之/综上所述"）、无基准修饰（"显著/大幅"）、三连形容词、铺垫式开头 | 删除套话；有对比基准才写"比 X 高 N%"；每节首句直接给事实或判断 |
+| R2 | AI 腔：套话、无基准的"显著/大幅"、三连形容词、铺垫开头 | 删套话；有基准才写"比 X 高 N%"；每节首句给事实 |
 | R3 | 编造数字 / 填补数据空洞 | 查不到就标 `partial` / `uncertain`，进「冲突与存疑」或「未覆盖」 |
 | R4 | 裸域名或 http 链接当引用（如"来源：arxiv.org"） | 必须写完整 `https://` 可点击链接，每条带日期 |
 | R5 | 以"综合判断"名义保留无证据结论 | 回指不到证据的结论降级为存疑，进「冲突与存疑」 |
@@ -226,16 +223,12 @@ corrections:
 ## 使用示例
 
 **技术选型**："深度调研一下 2026 年主流开源 TTS 方案，帮我选型。"
-Phase 0 判 `deep` 档（若只比 6 个方案则 `standard`）→ `init` 生成骨架 → 补成 6 个 items（含 1 个 counter："各方案已知缺陷与社区吐槽"）→ `gate --stage outline` → 🛑 用户确认并落 `confirmed: true` → 并行深调，每项落 `results/item_N.yaml` → `gate --stage results` → 反方评审写 `review.yaml`（TL;DR 承重引用逐条开页对照）→ `gate --stage review` → `report` 渲染 → `gate --stage report` → 交付 `report.md`。
-
-**市场/商业**："调研国内免漆门行业的渠道结构。"
-`type: market`，商业标注规范全开：每条数据带来源+日期，定量结论写清口径与假设，查不到的产能数据标 `partial` 并进「未覆盖」。
-
-**舆情/社区**："看看 B 站和小红书上对某款剪辑软件的真实评价。"
-`type: community`，社区源为主；决策级结论若只有用户生成内容支撑，标 `high-risk`，并补一条官方口径交叉验证。
+判 `standard`（6 个候选）→ `init` 建骨架 → 补 6 个 items（含 1 个 counter）→ `gate --stage outline` → 🛑 确认并落 `confirmed: true` → 逐项深调 → `gate --stage results` → 写 `review.yaml` + `spot_checks` → `gate --stage review` → `report` → `gate --stage report`。
 
 **轻量对照**："帮我查一下 X 的最新版本号。"
-`light` 档：直接搜，口头确认，不派子代理，不落 report.md，不跑全流水线。
+`light` 档：直接搜，口头确认，不派子代理，不落 `report.md`，不跑全流水线。
+
+市场/商业、舆情/社区两类完整走法见 `references/usage-examples.md`。
 
 ## 产物布局
 
@@ -257,9 +250,7 @@ Phase 0 判 `deep` 档（若只比 6 个方案则 `standard`）→ `init` 生成
 
 ## 边界与降级总表
 
-- 平台能力缺失 → 按能力矩阵降级列执行，报告头注明实际能力组合。
-- 子技能缺失 → 按指针表降级列执行；无法检测文件系统时全降级。
-- 社区平台需 cookie/代理时 → 跳过该频道，不算调研失败。
-- 全程禁止编造：查不到就标 `partial` / `uncertain`，报告里单列。
-- 相对时间一律写绝对日期 `YYYY-MM-DD`。
+- 平台能力缺失 → 按上方能力矩阵降级，报告头注明实际能力组合；无法检测文件系统时子技能全降级。
+- 社区平台需 cookie/代理时 → 跳过该频道，不算调研失败，写进「未覆盖」。
+- 全程禁止编造：查不到就标 `partial` / `uncertain`，报告里单列；相对时间一律写 `YYYY-MM-DD`。
 - 轻量档产出对话答复，不落 report.md；标准/深度档六章报告缺一章即判不合格。

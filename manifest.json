@@ -1,6 +1,6 @@
 {
   "name": "deep-research-plus",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "entry": "SKILL.md",
   "license": "MIT",
   "updated_at": "2026-10-26",
@@ -34,6 +34,8 @@
     "scripts/drp.py",
     "checklists/skill_audit.yaml",
     "test-prompts.json",
+    "references/report-template.md",
+    "references/usage-examples.md",
     "docs/user-guide.md",
     "docs/technical-manual.md",
     "docs/adversarial-review.md",

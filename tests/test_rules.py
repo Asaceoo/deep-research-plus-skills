@@ -191,6 +191,32 @@ def test_commands_exist_accepts_real_plan(drp_module, skill_dir):
     assert issues == []
 
 
+def test_max_bytes_over_limit(drp_module, skill_dir):
+    (skill_dir / "BIG.md").write_text("x" * 2000, encoding="utf-8")
+    issues = run(
+        drp_module,
+        skill_dir,
+        "",
+        [{"id": "CHK-S", "type": "max_bytes", "severity": "P2",
+          "params": {"path": "BIG.md", "max_bytes": 1000}}],
+    )
+    assert ids(issues) == ["CHK-S"]
+    assert issues[0].severity == "P2"
+    assert "2000" in issues[0].message
+
+
+def test_max_bytes_within_limit(drp_module, skill_dir):
+    (skill_dir / "SMALL.md").write_text("x" * 10, encoding="utf-8")
+    issues = run(
+        drp_module,
+        skill_dir,
+        "",
+        [{"id": "CHK-S", "type": "max_bytes", "severity": "P2",
+          "params": {"path": "SMALL.md", "max_bytes": 1000}}],
+    )
+    assert issues == []
+
+
 def test_checklist_file_missing(drp_module, skill_dir):
     import pytest
 

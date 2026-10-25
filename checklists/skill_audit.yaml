@@ -71,3 +71,11 @@ rules:
     severity: P1
     desc: SKILL.md 里的 drp.py 子命令与 gate 阶段必须真实存在
     hint: 文档写着实现里没有的命令，模型照抄就会撞墙
+  - id: CHK-011
+    type: max_bytes
+    severity: P2
+    desc: SKILL.md 体积上限，防止常驻上下文悄悄膨胀
+    hint: 超限就把细节移到 references/ 或 docs/，正文只留指针
+    params:
+      path: SKILL.md
+      max_bytes: 19456

@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-26
+
+- SKILL.md 从 19.7KB 压到 18.4KB：报告六章模板移入 `references/report-template.md`，市场/舆情两类完整示例移入 `references/usage-examples.md`，正文只留指针
+- 加「包内导航」表：正文此前 0 处指向 `checklists/`、0 处指向手册，模型拿到技能后不知道还有规则清单与技术契约
+- 清单加 CHK-011（`max_bytes`，19KB 上限）：常驻上下文体积超限要显式解释，不能悄悄膨胀
+- 技术手册补 `commands_exist` / `max_bytes` 两类规则与目录树；README 同步目录
+- 测试 121 → 123 条（体积规则超限/合规两例）
+
 ## [1.6.0] - 2026-10-26
 
 - 加目录锁：`report` / `bump` / `package` 三个写命令对同一目录互斥，锁文件 `.drp-lock` 记录 pid 与命令，超 30 分钟视为过期自动接管，`--no-lock` 可跳过
