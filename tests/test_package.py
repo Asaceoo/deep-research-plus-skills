@@ -85,6 +85,47 @@ def test_package_aborts_on_validation_failure(drp_module, skill_dir, tmp_path):
     assert not (out / "deep-research-plus-v1.2.3.zip").exists()
 
 
+def test_package_prevalidation_blocks_before_bump(drp_module, skill_dir, tmp_path):
+    """校验不过时版本不能动：先校验再递增。"""
+    (skill_dir / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [Unreleased]\n\n- 修复某问题\n\n## [1.2.3] - 2026-01-01\n\n- 初始\n",
+        encoding="utf-8",
+    )
+    (skill_dir / "docs" / "USER_MANUAL.md").unlink()  # manifest 登记过 → CHK-005 P0
+    out = tmp_path / "dist"
+    assert drp_module.main(["--skill-dir", str(skill_dir), "package", "--out", str(out)]) == 1
+    assert drp_module.read_version(skill_dir) == "1.2.3"
+    text = (skill_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "## [Unreleased]\n\n- 修复某问题" in text
+    assert "## [1.2.4]" not in text
+
+
+def test_package_rolls_back_when_post_validation_fails(drp_module, skill_dir, tmp_path, monkeypatch):
+    """递增后校验失败要回滚到递增前，不能留下「版本跳了但没包」。"""
+    (skill_dir / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## [Unreleased]\n\n- 修复某问题\n\n## [1.2.3] - 2026-01-01\n\n- 初始\n",
+        encoding="utf-8",
+    )
+    real = drp_module._pack_issues
+    calls = {"n": 0}
+
+    def fake(skill_dir_path, skip_codes=()):
+        calls["n"] += 1
+        if calls["n"] >= 2:
+            return [drp_module.Issue("SIM-001", "P0", "simulated", "模拟第二段失败")]
+        return real(skill_dir_path, skip_codes)
+
+    monkeypatch.setattr(drp_module, "_pack_issues", fake)
+    out = tmp_path / "dist"
+    assert drp_module.main(["--skill-dir", str(skill_dir), "package", "--out", str(out)]) == 1
+    assert calls["n"] >= 2
+    assert drp_module.read_version(skill_dir) == "1.2.3"
+    text = (skill_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "## [Unreleased]\n\n- 修复某问题" in text
+    assert "## [1.2.4]" not in text
+    assert not (out / "deep-research-plus-v1.2.4.zip").exists()
+
+
 def test_package_auto_bumps_then_builds(drp_module, skill_dir, tmp_path):
     (skill_dir / "CHANGELOG.md").write_text(
         "# Changelog\n\n## [Unreleased]\n\n- 新增 detect 子命令\n\n## [1.2.3] - 2026-01-01\n\n- 初始\n",

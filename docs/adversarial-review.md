@@ -1,6 +1,6 @@
 # 对抗性审查记录
 
-> 版本：1.6.1 ｜ 更新：2026-10-26 ｜ 对象：deep-research-plus v1.3.1 → v1.4.0
+> 版本：1.6.2 ｜ 更新：2026-10-26 ｜ 对象：deep-research-plus 技能包（记录起点 v1.3.1，后续轮次追加在本文件）
 
 本文件记录三视角对抗审查的过程与证据。所有"真实报错"均为本机命令输出原文，未做美化；修复后重跑结果附在每轮末尾。
 
@@ -125,11 +125,53 @@ selfcheck v1.3.1（14 项，失败 0）
 
 ## 7. 未修复/已知限制
 
-| # | 限制 | 原因 | 影响 |
-|---|------|------|------|
-| L1 | 不校验 URL 存活 | 要求离线可跑、不引入网络依赖 | 死链靠反方评审人工开页发现 |
-| L2 | 内置 YAML 解析不支持锚点/多文档 | 子集解析换取零依赖 | 复杂 YAML 需装 PyYAML，会以退出码 2 明确报错 |
-| L3 | 工作区无并发锁 | 单用户场景，加锁成本大于收益 | 同一 `{topic_slug}` 不要并行跑 |
-| L4 | 去 AI 腔只做黑名单拦截 | 风格改写不该由校验器承担 | 拦截后仍需人写或模型重写 |
+| # | 限制 | 现状 |
+|---|------|------|
+| L1 | 不校验 URL 存活 | **已改**：默认离线，`--check-links` 显式开启 HEAD 探测（G-RES-020/021） |
+| L2 | 内置 YAML 解析不支持锚点/多文档 | 保留。子集解析换零依赖，复杂 YAML 需装 PyYAML，会以退出码 2 明确报错 |
+| L3 | 工作区并发写无锁 | **已改**：`report`/`bump`/`package` 加 `.drp-lock`；但 agent 直接改 `results/*.yaml` 仍不受保护 |
+| L4 | 去 AI 腔只做黑名单拦截 | 保留。风格改写不该由校验器承担 |
+| L5 | 无法判断「链接真但内容不支撑」 | 保留。对策是 `spot_checks` 留痕（G-REV-013/014/015），留痕不等于判定 |
 
-这些限制已同步写入技术手册 §10，避免使用者误以为校验器能兜住一切。
+这些限制已同步写入技术手册 §11，避免使用者误以为校验器能兜住一切。
+
+## 8. 第五轮（v1.5.0 → v1.6.2）：从形状校验到失败可回滚
+
+前四轮解决的是「文档自洽」与「规则可执行」；这一轮集中在三件事：内容校验、并发安全、失败后的状态。
+
+| # | 缺陷 | 真实证据 | 修复 |
+|---|------|----------|------|
+| N1 | 闸门只验形状，假链接照样放行 | 注入 `https://example.com/this-page-does-not-exist-9f2a` → `[PASS] 0 error` | 来源数下限 G-RES-017、反方源类型 G-RES-018、占位链接 G-RES-019、可选 HEAD 探测 G-RES-020/021 |
+| N2 | 「承重引用逐条开页」只写在散文里 | `review.yaml` 无任何字段记录是否开页 | `spot_checks` + G-REV-013/014/015，决策级强制留痕 |
+| N3 | 报告渲染与六章契约两处漂移 | 实测渲染输出：对比总表无「数据截点」，来源清单未按类型分组 | 渲染器补齐，并加 G-REP-010/011 防回退 |
+| N4 | 打包失败会污染版本 | 注入 Unreleased 条目 + 删除 manifest 登记文件 → `package exit=1`，版本仍从 1.6.1 跳到 1.6.2，CHANGELOG 已生成发布段 | 改为两段校验：递增前先校验（放行 DOC/MAN-001），递增后再全量校验，失败用快照回滚 SKILL/manifest/CHANGELOG/README/docs |
+| N5 | manifest 结构校验依赖清单 | 删掉清单里的 `manifest_files_exist` 规则后，缺文件不再报警 | 上移为基础校验 MAN-001..003；清单规则降级为补充 |
+| N6 | 文档里的数字会漂移 | README 写「121 条回归」，实际已是 123 条 | 移除硬编码条数，改为「全量回归（含失败路径）」；规则条数只写在清单文件里 |
+| N7 | 并发写同一目录无保护 | 无锁，后写覆盖先写 | `WorkspaceLock`：O_EXCL 建锁、30 分钟过期接管、异常释放、`--no-lock` 逃生口 |
+| N8 | 正文 19.7KB 且不指向 checklist/手册 | 实测 `checklists/` 出现 0 次、手册 0 次 | 模板与示例移入 `references/`，加「包内导航」表，CHK-010 守 19KB 上限 |
+
+收敛验证：
+
+```
+$ python -m pytest tests -q
+125 passed
+
+$ python scripts/drp.py validate
+[PASS] validate(deep-research-plus v1.6.1): 0 error(s), 0 warning(s)
+
+$ python scripts/drp.py selfcheck
+selfcheck v1.6.1（16 项，失败 0）
+```
+
+回滚探针（N4 修复后）：
+
+```
+$ python scripts/drp.py package
+[FAIL] 打包前校验未通过，已中止（版本未变动）：
+  [P0] MAN-003 @ manifest.json: 登记的文件不存在：docs/adversarial-review.md
+exit=1
+$ python scripts/drp.py version
+1.6.1
+```
+
+真机验证覆盖：安装到 `~/.workbuddy/skills/deep-research-plus` 后 `validate` 0/0、`selfcheck` 16 项全 PASS、包内 fixture 五道闸门退出码全 0、锁行为（占用 exit 2 / `--no-lock` 放行）实测。

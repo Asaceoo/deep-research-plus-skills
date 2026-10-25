@@ -676,6 +676,17 @@ def check_manifest_consistency(skill_dir: Path, meta: dict) -> list:
         issues.append(
             Issue("MAN-002", "P1", "manifest.json", f"manifest.name={manifest['name']!r} 与目录名不一致")
         )
+    for entry in manifest.get("files") or []:
+        if not (skill_dir / str(entry)).exists():
+            issues.append(
+                Issue(
+                    "MAN-003",
+                    "P0",
+                    "manifest.json",
+                    f"登记的文件不存在：{entry}",
+                    "补文件或从 manifest.files 移除",
+                )
+            )
     return issues
 
 
@@ -1807,6 +1818,7 @@ PACKAGE_INCLUDE = (
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
+    "THIRD-PARTY-NOTICES.md",
     "test-prompts.json",
     "scripts",
     "checklists",
@@ -1905,8 +1917,55 @@ def _package_impl(args) -> int:
         return _package_run(args, skill_dir, out_dir)
 
 
+def _pack_issues(skill_dir: Path, skip_codes: tuple = ()) -> list:
+    """打包前的完整校验；skip_codes 用于放行「bump 会顺手修好」的那几类。"""
+    text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+    meta, body, _ = parse_frontmatter(text)
+    issues = []
+    issues += check_frontmatter(skill_dir, meta)
+    issues += check_structure(skill_dir, meta, body)
+    issues += check_paths(skill_dir, body)
+    issues += check_versions(skill_dir, meta)
+    issues += check_license(skill_dir, meta)
+    issues += check_manifest_consistency(skill_dir, meta)
+    issues += run_checklist(skill_dir, meta, body, load_checklist(skill_dir, ""))
+    return [i for i in issues if i.code not in skip_codes]
+
+
+def _snapshot(skill_dir: Path) -> dict:
+    paths = [skill_dir / name for name in ("SKILL.md", "manifest.json", "CHANGELOG.md", "README.md")]
+    if (skill_dir / "docs").is_dir():
+        paths += sorted((skill_dir / "docs").glob("*.md"))
+    return {path: path.read_bytes() for path in paths if path.exists()}
+
+
+def _restore(snapshot: dict) -> None:
+    for path, data in snapshot.items():
+        path.write_bytes(data)
+
+
+def _report_blocking(issues: list, args, headline: str) -> None:
+    blocking = [i for i in issues if i.severity in ("P0", "P1")]
+    if args.json:
+        jprint({"ok": False, "stage": "validate", "headline": headline,
+                "issues": [i.as_dict() for i in blocking]})
+    else:
+        say(f"[FAIL] {headline}")
+        for issue in blocking:
+            say(issue.render())
+
+
 def _package_run(args, skill_dir: Path, out_dir: Path) -> int:
     before = read_version(skill_dir)
+
+    # 第一段：先校验，避免「版本已递增、包却没出来」的状态污染。
+    # DOC-001/002 与 MAN-001 由 bump 负责修正，这里放行。
+    pre = _pack_issues(skill_dir, skip_codes=("DOC-001", "DOC-002", "MAN-001"))
+    if [i for i in pre if i.severity in ("P0", "P1")] and not args.force:
+        _report_blocking(pre, args, "打包前校验未通过，已中止（版本未变动）：")
+        return 1
+
+    snapshot = _snapshot(skill_dir)
     if args.no_bump:
         version = before
         level = "none"
@@ -1924,25 +1983,17 @@ def _package_run(args, skill_dir: Path, out_dir: Path) -> int:
             version = bump_semver(before, level)
             changed = apply_version(skill_dir, version)
 
-    # 打包前强制校验（P0/P1 阻断）
-    text = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
-    meta, body, _ = parse_frontmatter(text)
-    issues = []
-    issues += check_frontmatter(skill_dir, meta)
-    issues += check_structure(skill_dir, meta, body)
-    issues += check_paths(skill_dir, body)
-    issues += check_versions(skill_dir, meta)
-    issues += check_license(skill_dir, meta)
-    issues += check_manifest_consistency(skill_dir, meta)
-    issues += run_checklist(skill_dir, meta, body, load_checklist(skill_dir, ""))
+    # 第二段：递增后再校验一次（含版本同步），不过则回滚到递增前的状态。
+    issues = _pack_issues(skill_dir)
     blocking = [i for i in issues if i.severity in ("P0", "P1")]
     if blocking and not args.force:
-        if args.json:
-            jprint({"ok": False, "stage": "validate", "issues": [i.as_dict() for i in blocking]})
-        else:
-            say("[FAIL] 打包前校验未通过，已中止：")
-            for issue in blocking:
-                say(issue.render())
+        if changed:
+            _restore(snapshot)
+            version = before
+        _report_blocking(
+            issues, args,
+            f"打包前校验未通过，已中止（{'已回滚到 ' + before if changed else '版本未变动'}）：",
+        )
         return 1
 
     zip_path, digest, count = build_zip(skill_dir, out_dir, version)

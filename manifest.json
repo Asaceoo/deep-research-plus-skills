@@ -1,6 +1,6 @@
 {
   "name": "deep-research-plus",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "entry": "SKILL.md",
   "license": "MIT",
   "updated_at": "2026-10-26",
@@ -31,6 +31,7 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
+    "THIRD-PARTY-NOTICES.md",
     "scripts/drp.py",
     "checklists/skill_audit.yaml",
     "test-prompts.json",

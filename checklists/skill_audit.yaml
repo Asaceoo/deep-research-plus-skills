@@ -1,6 +1,8 @@
 # deep-research-plus 技能包清单（机器可执行兜底）
 # 由 scripts/drp.py validate / selfcheck 读取；规则类型不可随意新增，
 # 未知类型会直接判 P1，避免清单静默失效。
+# manifest 的结构性校验（版本/包名/登记文件存在）已上移到基础校验 MAN-001..003，
+# 不再依赖清单：清单被裁剪时结构完整性仍受保护。
 meta:
   owner: asaceoo
   applies_to: SKILL.md
@@ -34,31 +36,25 @@ rules:
         - pattern: '本仓库[^\n]{0,20}已(捆绑|内置)'
           requires_dir: sub-skills
   - id: CHK-005
-    type: manifest_files_exist
-    severity: P0
-    desc: manifest.json 字段齐全且登记文件真实存在
-    params:
-      required_keys: [name, version, entry, license, files]
-  - id: CHK-006
     type: required_patterns
     severity: P0
     desc: 必须给出可执行的机器契约入口
     hint: 缺少脚本入口时 AI 只能靠自觉，闸门无法闭环
     params:
       patterns: ['drp\.py', 'gate --stage', 'bump', 'package']
-  - id: CHK-007
+  - id: CHK-006
     type: forbidden_patterns
     severity: P1
     desc: 技能正文不允许遗留占位符
     params:
       patterns: ['TODO', 'TBD', 'FIXME', '待补充']
-  - id: CHK-008
+  - id: CHK-007
     type: required_patterns
     severity: P1
     desc: 证据分级词汇必须出现，确保 R5/R6 可被引用
     params:
       patterns: ['single-source', 'high-risk', 'partial']
-  - id: CHK-009
+  - id: CHK-008
     type: test_prompts_present
     severity: P1
     desc: 消费者回归用例必须存在，且含至少一条歧义/违规场景
@@ -66,12 +62,12 @@ rules:
       path: test-prompts.json
       min_prompts: 3
       min_anomaly: 1
-  - id: CHK-010
+  - id: CHK-009
     type: commands_exist
     severity: P1
     desc: SKILL.md 里的 drp.py 子命令与 gate 阶段必须真实存在
     hint: 文档写着实现里没有的命令，模型照抄就会撞墙
-  - id: CHK-011
+  - id: CHK-010
     type: max_bytes
     severity: P2
     desc: SKILL.md 体积上限，防止常驻上下文悄悄膨胀
