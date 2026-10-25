@@ -82,7 +82,7 @@ $ python scripts/drp.py --skill-dir ~/.workbuddy/skills/deep-research-plus valid
 
 ```
 $ python -m pytest tests -q
-92 passed in 8.33s
+92 passed
 
 $ python scripts/drp.py validate
 [PASS] validate(deep-research-plus v1.3.1): 0 error(s), 0 warning(s)
@@ -90,6 +90,8 @@ $ python scripts/drp.py validate
 $ python scripts/drp.py selfcheck
 selfcheck v1.3.1（14 项，失败 0）
 ```
+
+> 上述 `v1.3.1` 是进入收敛验证时的版本号；`package` 自动递增后为发布版 `v1.4.0`，两份输出版本量级一致（92 条测试与 14 项清单不随版本号变化）。
 
 收敛判定标准（三条同时满足才算收敛）：
 
