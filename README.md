@@ -1,6 +1,6 @@
 # Deep Research Plus
 
-> 版本：1.4.0 ｜ 更新：2026-10-26
+> 版本：1.4.1 ｜ 更新：2026-10-26
 
 ![version](https://img.shields.io/badge/version-1.4.0-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![python](https://img.shields.io/badge/python-3.8%2B%20%7C%20%E9%9B%B6%E4%BE%9D%E8%B5%96-3776ab)
 
@@ -127,7 +127,7 @@ deep-research-plus/
 ├── scripts/drp.py               # 工具层（单文件，零硬依赖）
 ├── checklists/skill_audit.yaml  # 八条机器规则
 ├── docs/                        # 双手册 + 审查记录 + 概念图
-├── tests/                       # 92 条回归（含失败路径）
+├── tests/                       # 100 条回归（含失败路径）
 ├── sub-skills/                  # 四个子技能（仅仓库，不随 zip）
 └── dist/                        # 发布产物（不入库）
 ```

@@ -1,0 +1,28 @@
+topic: 闸门自检用例
+slug: selfcheck-fixture
+tier: standard
+type: tech
+confirmed: true
+confirmed_at: "2026-10-20"
+confirmed_by: selfcheck
+items:
+  - id: 1
+    title: 候选 A 的关键指标
+    kind: normal
+    fields: [point]
+    status: done
+  - id: 2
+    title: 候选 B 的关键指标
+    kind: normal
+    fields: [point]
+    status: done
+  - id: 3
+    title: 横向对比口径
+    kind: normal
+    fields: [point]
+    status: done
+  - id: 4
+    title: 反方条目：已知缺陷
+    kind: counter
+    fields: [point]
+    status: done

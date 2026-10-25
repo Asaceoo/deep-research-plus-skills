@@ -120,6 +120,14 @@ def test_results_counter_without_negative_evidence(drp_module, pass_ws):
     assert "G-RES-006" in codes(drp_module.gate_results(pass_ws, False))
 
 
+def test_results_field_coverage_is_blocking(drp_module, pass_ws):
+    patch(pass_ws / "results" / "item_1.yaml", "    field: license\n", "")
+    issues = drp_module.gate_results(pass_ws, False)
+    hit = [i for i in issues if i.code == "G-RES-016"]
+    assert hit and all(i.severity == "P1" for i in hit), [i.render() for i in hit]
+    assert drp_module.main(["gate", "--workspace", str(pass_ws), "--stage", "results"]) == 1
+
+
 # ---------------------------------------------------------------- review
 def test_review_pass(drp_module, pass_ws):
     issues = drp_module.gate_review(pass_ws, False)

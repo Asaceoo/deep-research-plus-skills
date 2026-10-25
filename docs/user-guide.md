@@ -1,6 +1,6 @@
 # 用户手册
 
-> 版本：1.4.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.4.1 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 这个技能替你做什么
 
@@ -162,6 +162,8 @@ JSON 输出：任意子命令后加 `--json`，便于接 CI 或其它 agent。
 | 报 G-RES-013 | 日期写成"上周""2026年10月" | 改 `YYYY-MM-DD` |
 | 报 G-REV-008 | 单源结论没标 | 加 `flags: [single-source]` 或补第二个源 |
 | 报 G-REV-003 | 评审补搜超过 2 轮 | 停下，把没查到的写进 `uncovered` |
+| 报 G-RES-016 | outline 声明的字段没有任何证据覆盖（v1.4.1 起判失败） | 补该字段的 finding，或从 outline 删掉这个字段 |
+| 报 MAN-001 | `manifest.json` 版本和 `SKILL.md` 不一致 | 跑一次 `drp.py bump --level patch` 同步 |
 | `report` 后 gate 报 G-REP-005 | 尾注缺链接 | 检查 `review.yaml` 的 evidence id 是否存在 |
 | Windows 控制台中文乱码 | 终端编码非 UTF-8 | 脚本已强制 UTF-8 输出；仍有乱码时 `chcp 65001` |
 | `yaml 解析失败` | 用了锚点/多文档等内置解析不支持的语法 | 装 PyYAML，或改写成基础结构 |

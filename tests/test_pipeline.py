@@ -80,3 +80,20 @@ def test_selfcheck_on_real_pack(drp_module):
     root = Path(__file__).resolve().parents[1]
     rc = drp_module.main(["--skill-dir", str(root), "selfcheck", "--no-pipeline"])
     assert rc == 0
+
+
+def test_fixture_falls_back_to_checklists_copy(drp_module, tmp_path, skill_dir):
+    """发布 zip 不含 tests/，必须靠 checklists/fixtures 跑满流水线回归。"""
+    import shutil
+
+    root = Path(__file__).resolve().parents[1]
+    target = skill_dir / "checklists" / "fixtures" / "pass"
+    shutil.copytree(root / "checklists" / "fixtures" / "pass", target)
+    rows = drp_module._fixture_pipeline(skill_dir)
+    assert len(rows) == 5, rows
+    assert all(status == "PASS" for _, status, _ in rows), rows
+
+
+def test_fixture_missing_reports_skip(drp_module, skill_dir):
+    rows = drp_module._fixture_pipeline(skill_dir)
+    assert len(rows) == 1 and rows[0][1] == "SKIP"

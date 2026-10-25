@@ -1,0 +1,13 @@
+item_id: 1
+title: 候选 A 的关键指标
+status: done
+findings:
+  - id: c1
+    claim: 候选 A 官方文档给出吞吐基线
+    value: 1200 req/s
+    field: point
+    source_url: https://example.com/a/docs
+    source_type: official
+    date: 2026-09-01
+    polarity: positive
+uncertainties: []

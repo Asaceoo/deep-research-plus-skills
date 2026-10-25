@@ -103,6 +103,59 @@ def test_unknown_rule_type_fails_loudly(drp_module, skill_dir):
     assert ids(issues) == ["CHK-000"]
 
 
+def test_test_prompts_missing(drp_module, skill_dir):
+    issues = run(
+        drp_module,
+        skill_dir,
+        "",
+        [{"id": "CHK-P", "type": "test_prompts_present", "severity": "P1",
+          "params": {"path": "test-prompts.json"}}],
+    )
+    assert ids(issues) == ["CHK-P"]
+
+
+def test_test_prompts_without_anomaly(drp_module, skill_dir):
+    import json
+
+    (skill_dir / "test-prompts.json").write_text(
+        json.dumps(
+            {"prompts": [
+                {"id": "a", "kind": "typical", "prompt": "p1", "expects": ["x"]},
+                {"id": "b", "kind": "typical", "prompt": "p2", "expects": ["y"]},
+                {"id": "c", "kind": "typical", "prompt": "p3", "expects": ["z"]},
+            ]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    issues = run(
+        drp_module,
+        skill_dir,
+        "",
+        [{"id": "CHK-P", "type": "test_prompts_present", "severity": "P1",
+          "params": {"min_prompts": 3, "min_anomaly": 1}}],
+    )
+    assert ids(issues) == ["CHK-P"]
+    assert "anomaly" in issues[0].message
+
+
+def test_test_prompts_ok(drp_module, skill_dir):
+    import json
+    import shutil
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parents[1] / "test-prompts.json"
+    shutil.copy(source, skill_dir / "test-prompts.json")
+    issues = run(
+        drp_module,
+        skill_dir,
+        "",
+        [{"id": "CHK-P", "type": "test_prompts_present", "severity": "P1",
+          "params": {"min_prompts": 3, "min_anomaly": 1}}],
+    )
+    assert issues == []
+
+
 def test_checklist_file_missing(drp_module, skill_dir):
     import pytest
 

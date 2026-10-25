@@ -58,3 +58,11 @@ rules:
     desc: 证据分级词汇必须出现，确保 R5/R6 可被引用
     params:
       patterns: ['single-source', 'high-risk', 'partial']
+  - id: CHK-009
+    type: test_prompts_present
+    severity: P1
+    desc: 消费者回归用例必须存在，且含至少一条歧义/违规场景
+    params:
+      path: test-prompts.json
+      min_prompts: 3
+      min_anomaly: 1

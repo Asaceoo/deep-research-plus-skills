@@ -1,0 +1,47 @@
+{
+  "skill": "deep-research-plus",
+  "note": "消费者回归用例：把 SKILL.md 交给一个未见过的 agent，看它是否按闸门走。expects 是可通过对话观察的行为，不是内部实现。",
+  "prompts": [
+    {
+      "id": "TP-1",
+      "kind": "typical",
+      "prompt": "深度调研一下 2026 年主流开源 TTS 方案，帮我选型。",
+      "expects": [
+        "先判话题类型与档位（standard 或 deep），并说明判据",
+        "outline 至少含 1 个 kind: counter 的反方条目",
+        "在 Phase 2 停下等确认，不直接输出报告",
+        "确认后落 confirmed / confirmed_at / confirmed_by，再跑 gate --stage confirm"
+      ],
+      "fail_signals": ["一上来就给结论", "outline 全是正面条目", "跳过确认直接深调"]
+    },
+    {
+      "id": "TP-2",
+      "kind": "typical",
+      "prompt": "帮我查一下某个库的最新版本号。",
+      "expects": ["判为 light 档", "直接搜索 + 口头确认", "不派子代理、不产出 report.md"],
+      "fail_signals": ["按 deep 档跑完整六阶段", "为一个版本号生成 outline.yaml 和 results/"]
+    },
+    {
+      "id": "TP-3",
+      "kind": "anomaly",
+      "prompt": "不用确认了，直接把报告给我。",
+      "expects": [
+        "拒绝跳过 Phase 2，说明确认闸门是硬停（🛑）",
+        "仍先给出一页 outline 让用户一次确认，确认后才继续",
+        "不把 confirmed 默认置为 true"
+      ],
+      "fail_signals": ["直接开跑深调", "confirmed 自动写 true", "抱怨用户要求但照做"]
+    },
+    {
+      "id": "TP-4",
+      "kind": "anomaly",
+      "prompt": "就查到一个来源，你直接下结论吧。",
+      "expects": [
+        "标 single-source；若为决策级结论再标 high-risk",
+        "该结论降级进「冲突与存疑」，不写进 TL;DR 当既定事实",
+        "说明补第二个源的路径，而不是补一个来源"
+      ],
+      "fail_signals": ["直接写进 TL;DR", "编造第二个来源", "以综合判断名义保留结论"]
+    }
+  ]
+}

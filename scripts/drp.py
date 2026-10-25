@@ -579,6 +579,35 @@ def check_versions(skill_dir: Path, meta: dict) -> list:
     return issues
 
 
+def check_manifest_consistency(skill_dir: Path, meta: dict) -> list:
+    """manifest.json 与 SKILL.md 的版本/名称必须一致，否则发布物自相矛盾。"""
+    issues = []
+    path = skill_dir / "manifest.json"
+    if not path.exists():
+        return issues
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return issues
+    skill_version = str(meta.get("version") or "")
+    manifest_version = str(manifest.get("version") or "")
+    if skill_version and manifest_version and skill_version != manifest_version:
+        issues.append(
+            Issue(
+                "MAN-001",
+                "P0",
+                "manifest.json",
+                f"manifest.version={manifest_version} 与 SKILL.md version={skill_version} 不一致",
+                "zip 名与 BUILD-MANIFEST 取 SKILL 版本，包内 manifest 取自身，漂移会让发布物自相矛盾",
+            )
+        )
+    if manifest.get("name") and manifest["name"] != skill_dir.name:
+        issues.append(
+            Issue("MAN-002", "P1", "manifest.json", f"manifest.name={manifest['name']!r} 与目录名不一致")
+        )
+    return issues
+
+
 def check_license(skill_dir: Path, meta: dict) -> list:
     issues = []
     declared = meta.get("license")
@@ -683,6 +712,35 @@ def check_required_patterns(body: str, params: dict, rule_id: str, severity: str
     return issues
 
 
+def check_test_prompts(skill_dir: Path, params: dict, rule_id: str, severity: str) -> list:
+    """test-prompts.json：消费者回归用例必须存在且含歧义场景。"""
+    issues = []
+    rel = str(params.get("path") or "test-prompts.json")
+    path = skill_dir / rel
+    if not path.exists():
+        return [Issue(rule_id, severity, rel, "缺少消费者回归用例文件", "至少 3 条：典型场景 + 歧义/违规场景")]
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [Issue(rule_id, "P0", rel, f"JSON 非法：{exc}")]
+    prompts = data.get("prompts") or []
+    minimum = int(params.get("min_prompts") or 3)
+    if len(prompts) < minimum:
+        issues.append(Issue(rule_id, severity, rel, f"用例数 {len(prompts)} 少于下限 {minimum}"))
+    anomalies = 0
+    for pos, item in enumerate(prompts, 1):
+        if not isinstance(item, dict) or not item.get("prompt") or not item.get("expects"):
+            issues.append(Issue(rule_id, severity, rel, f"第 {pos} 条缺 prompt 或 expects"))
+            continue
+        if str(item.get("kind") or "typical") == "anomaly":
+            anomalies += 1
+    if prompts and anomalies < int(params.get("min_anomaly") or 1):
+        issues.append(
+            Issue(rule_id, severity, rel, "缺少 anomaly 用例（用户要求跳过闸门/只要单源结论等歧义场景）")
+        )
+    return issues
+
+
 RULE_HANDLERS = {
     "forbidden_patterns": lambda skill_dir, body, params, rid, sev: check_forbidden_patterns(body, params, rid, sev),
     "conflict_pairs": lambda skill_dir, body, params, rid, sev: check_conflict_pairs(body, params, rid, sev),
@@ -690,6 +748,7 @@ RULE_HANDLERS = {
     "claim_requires_dir": check_claim_requires_dir,
     "manifest_files_exist": lambda skill_dir, body, params, rid, sev: check_manifest(skill_dir, params, rid, sev),
     "gate_matrix": lambda skill_dir, body, params, rid, sev: check_gate_matrix(body, params, rid, sev),
+    "test_prompts_present": lambda skill_dir, body, params, rid, sev: check_test_prompts(skill_dir, params, rid, sev),
 }
 
 
@@ -730,6 +789,7 @@ def cmd_validate(args) -> int:
     issues += check_paths(skill_dir, body)
     issues += check_versions(skill_dir, meta)
     issues += check_license(skill_dir, meta)
+    issues += check_manifest_consistency(skill_dir, meta)
     checklist = load_checklist(skill_dir, args.checklist)
     issues += run_checklist(skill_dir, meta, body, checklist)
     if args.strict:
@@ -1088,7 +1148,15 @@ def gate_results(workspace: Path, strict: bool) -> list:
         required_fields = [str(f) for f in (item.get("fields") or [])]
         missing = [f for f in required_fields if f not in covered]
         if required_fields and missing and findings:
-            issues.append(Issue("G-RES-016", "P2", rel, f"字段未被 findings 覆盖：{', '.join(missing)}"))
+            issues.append(
+                Issue(
+                    "G-RES-016",
+                    "P1",
+                    rel,
+                    f"字段未被 findings 覆盖：{', '.join(missing)}",
+                    "字段是 Phase 2 与用户确认过的契约，缺证即契约破坏；补 evidence 或从 outline 删字段",
+                )
+            )
     return issues
 
 
@@ -1464,6 +1532,7 @@ PACKAGE_INCLUDE = (
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
+    "test-prompts.json",
     "scripts",
     "checklists",
     "docs",
@@ -1583,6 +1652,7 @@ def _package_impl(args) -> int:
     issues += check_paths(skill_dir, body)
     issues += check_versions(skill_dir, meta)
     issues += check_license(skill_dir, meta)
+    issues += check_manifest_consistency(skill_dir, meta)
     issues += run_checklist(skill_dir, meta, body, load_checklist(skill_dir, ""))
     blocking = [i for i in issues if i.severity in ("P0", "P1")]
     if blocking and not args.force:
@@ -1626,10 +1696,19 @@ def _package_impl(args) -> int:
 # selfcheck：清单兜底 + 流水线回归
 # --------------------------------------------------------------------------
 def _fixture_pipeline(skill_dir: Path) -> list:
-    """用 tests/fixtures/pass 跑通 init → gate → report。"""
-    fixture = skill_dir / "tests" / "fixtures" / "pass"
-    if not fixture.is_dir():
-        return [("FIXTURE", "SKIP", "无 tests/fixtures/pass，跳过流水线回归")]
+    """用内置 fixture 跑通 gate → report 全链路。
+
+    查找顺序：tests/fixtures/pass（源码仓库）→ checklists/fixtures/pass（发布包内）。
+    发布 zip 不含 tests/，所以包内自检必须靠 checklists 下的精简 fixture，否则这里会 SKIP。
+    """
+    candidates = [
+        skill_dir / "tests" / "fixtures" / "pass",
+        skill_dir / "checklists" / "fixtures" / "pass",
+    ]
+    fixture = next((path for path in candidates if path.is_dir()), None)
+    if fixture is None:
+        searched = " 或 ".join(str(p) for p in candidates)
+        return [("FIXTURE", "SKIP", f"未找到流水线 fixture（{searched}）")]
     results = []
     steps = [
         ("gate:outline", lambda: gate_outline(fixture, False)),
@@ -1677,6 +1756,7 @@ def cmd_selfcheck(args) -> int:
         + check_paths(skill_dir, body)
         + check_versions(skill_dir, meta)
         + check_license(skill_dir, meta)
+        + check_manifest_consistency(skill_dir, meta)
     )
     invalid = [i for i in base_issues if i.severity in ("P0", "P1")]
     rows.insert(0, ("BASE", "PASS" if not invalid else "FAIL", ", ".join(i.code for i in invalid) or "0 issue"))

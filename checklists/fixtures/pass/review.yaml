@@ -1,0 +1,19 @@
+rounds: 1
+capabilities: 串行+摘要级
+decisions:
+  - id: d1
+    claim: 两个候选的吞吐口径差异不足以单独决定选型
+    level: decision
+    evidence: [c1, c2]
+    flags: []
+  - id: d2
+    claim: 内存占用是被社区反复提到的短板
+    level: supporting
+    evidence: [c4]
+    flags: [single-source, high-risk]
+conflicts:
+  - 官方吞吐与三方基准口径未对齐，已并列保留
+uncovered:
+  - 长时间压测数据未见公开复现
+corrections:
+  - 删除 1 条仅凭印象的结论

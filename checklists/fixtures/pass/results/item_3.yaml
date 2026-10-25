@@ -1,0 +1,14 @@
+item_id: 3
+title: 横向对比口径
+status: done
+findings:
+  - id: c3
+    claim: 三方基准测试的延迟差距在可比较范围内
+    value: 延迟差距 12%
+    field: point
+    source_url: https://example.org/bench
+    source_type: secondary
+    date: 2026-08-15
+    polarity: neutral
+uncertainties:
+  - 基准数据集与生产分布不一致

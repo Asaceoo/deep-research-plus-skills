@@ -93,6 +93,27 @@ def test_fake_bundle_claim(drp_module, skill_dir):
     assert "PATH-003" in codes(issues)
 
 
+def test_manifest_version_drift_detected(drp_module, skill_dir):
+    import json
+
+    manifest = json.loads((skill_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["version"] = "9.9.9"
+    (skill_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    issues = drp_module.check_manifest_consistency(skill_dir, {"version": "1.2.3"})
+    assert "MAN-001" in codes(issues)
+    assert all(i.severity == "P0" for i in issues if i.code == "MAN-001")
+
+
+def test_manifest_name_mismatch(drp_module, skill_dir):
+    import json
+
+    manifest = json.loads((skill_dir / "manifest.json").read_text(encoding="utf-8"))
+    manifest["name"] = "other-skill"
+    (skill_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    issues = drp_module.check_manifest_consistency(skill_dir, {"version": "1.2.3"})
+    assert "MAN-002" in codes(issues)
+
+
 def test_structure_missing_section(drp_module, skill_dir):
     issues = drp_module.check_structure(skill_dir, {}, "# 空\n\n## 能力需求\n")
     assert "SEC-001" in codes(issues)

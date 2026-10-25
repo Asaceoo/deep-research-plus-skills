@@ -1,0 +1,14 @@
+item_id: 4
+title: 反方条目：已知缺陷
+status: done
+findings:
+  - id: c4
+    claim: 社区反馈记忆占用高于官方标注
+    value: 超出约 30%
+    field: point
+    source_url: https://example.net/thread/42
+    source_type: community
+    date: 2026-09-10
+    polarity: negative
+uncertainties:
+  - 单条社区反馈，样本不足

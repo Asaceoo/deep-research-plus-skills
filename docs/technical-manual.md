@@ -1,6 +1,6 @@
 # 技术手册
 
-> 版本：1.4.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.4.1 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 设计目标与不变量
 
@@ -120,6 +120,7 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 
 - **单源判定**：`decisions[].evidence` 推出的 URL 去重集合大小为 1 → 必须含 `single-source`。
 - **高风险判定**：证据的 `source_type` 集合 ⊆ {`community`, `secondary`} 且 level=decision → 必须含 `high-risk`。
+- **字段覆盖判定**（v1.4.1 起为 P1）：`outline.items[].fields` 声明过的字段，必须至少被该 item 的一条 finding 的 `field` 命中。字段是 Phase 2 与用户确认过的契约，整块缺证等于契约破坏，不能只给警告。
 - **复核轮次**：`rounds > 2` 直接失败，而不是警告——无限补搜是流程失控的典型信号。
 - **AI 腔**：正则黑名单在 `SKILL.md`（跳过「反例黑名单」章节）与 `report.md/review.yaml` 全文分别扫描；后者不豁免任何章节。
 
@@ -135,6 +136,7 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | `required_patterns` | 必需内容扫描 | `patterns`、`hint` |
 | `claim_requires_dir` | "已捆绑"类声明必须目录真实存在 | `claims[].pattern/requires_dir` |
 | `manifest_files_exist` | manifest 字段齐全 + 登记文件存在 | `required_keys` |
+| `test_prompts_present` | 消费者回归用例存在且含 anomaly 场景 | `path`、`min_prompts`、`min_anomaly` |
 
 扩展方式：实现 `check_xxx(skill_dir, body, params, rule_id, severity)`，注册进 `RULE_HANDLERS`，再写清单条目。
 **未注册的 type 会产出 `CHK-000` P1**，这是刻意设计：清单加错字不能导致"检查通过"。
@@ -148,7 +150,8 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | PATH-001/003/004 | 相对路径不存在/虚假捆绑声明/疑似笔误 | 删指针或补文件 |
 | DOC-001/002 | 文档缺版本头/版本不一致 | `bump` 或手工同步 |
 | LIC-001 | 声明 license 无 LICENSE | 补文件 |
-| CHK-001..008 | 清单规则命中 | 按 detail 修 SKILL.md |
+| MAN-001/002 | manifest 版本与 SKILL 不一致 / 名称与目录不一致 | 跑 `bump` 或改 manifest |
+| CHK-001..009 | 清单规则命中 | 按 detail 修 SKILL.md 或补文件 |
 | G-OUT-001..018 | 大纲问题 | 见用户手册 §8 |
 | G-CON-001..005 | 未确认/日期非法/确认人缺失 | 补 confirmed 三件套 |
 | G-RES-001..016 | 证据缺失/链接非 https/日期非法/类型非法 | 补证据字段 |
