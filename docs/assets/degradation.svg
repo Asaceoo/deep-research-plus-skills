@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" width="880" height="340" role="img" aria-label="证据绑定与放行判定">
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#93a3b5"/>
+    </marker>
+  </defs>
+  <rect width="880" height="340" fill="#ffffff"/>
+  <text x="24" y="34" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="700" fill="#1f2933">一条结论怎么才算成立：证据三要素 → 回指 → 分级标记</text>
+  <text x="24" y="56" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#5b6b7c">缺任一项即出局：进「冲突与存疑」，不以"综合判断"名义保留</text>
+
+  <!-- claim -->
+  <rect x="24" y="86" width="200" height="96" rx="10" fill="#f7f9fc" stroke="#d6dee8"/>
+  <text x="40" y="110" font-family="Segoe UI, PingFang SC, sans-serif" font-size="11" fill="#5b6b7c">候选结论</text>
+  <text x="40" y="134" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#1f2933">"A 方案吞吐最高"</text>
+  <text x="40" y="156" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#5b6b7c">level: decision</text>
+  <text x="40" y="172" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#5b6b7c">evidence: [f1]</text>
+
+  <line x1="228" y1="134" x2="256" y2="134" stroke="#93a3b5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- three requirements -->
+  <g font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif">
+    <rect x="262" y="86" width="196" height="30" rx="8" fill="#eef4ff" stroke="#b9cdf5"/>
+    <text x="276" y="106" font-size="12" fill="#1d4ed8">source_url 必须 https:// 完整链接</text>
+    <rect x="262" y="122" width="196" height="30" rx="8" fill="#eef4ff" stroke="#b9cdf5"/>
+    <text x="276" y="142" font-size="12" fill="#1d4ed8">date 必须 YYYY-MM-DD</text>
+    <rect x="262" y="158" width="196" height="30" rx="8" fill="#eef4ff" stroke="#b9cdf5"/>
+    <text x="276" y="178" font-size="12" fill="#1d4ed8">source_type 五类之一</text>
+  </g>
+
+  <line x1="462" y1="134" x2="490" y2="134" stroke="#93a3b5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- gate diamond -->
+  <g>
+    <path d="M560,86 L628,134 L560,182 L492,134 Z" fill="#fff7ed" stroke="#f0b429" stroke-width="1.5"/>
+    <text x="530" y="130" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#1f2933">回指得到</text>
+    <text x="530" y="148" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#1f2933">证据 id？</text>
+  </g>
+
+  <!-- yes branch -->
+  <line x1="628" y1="134" x2="664" y2="134" stroke="#93a3b5" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <text x="634" y="126" font-family="Segoe UI, PingFang SC, sans-serif" font-size="11" fill="#2f7d52">是</text>
+  <rect x="670" y="86" width="186" height="96" rx="10" fill="#f0f9f4" stroke="#9ed3b4"/>
+  <text x="686" y="110" font-family="Segoe UI, PingFang SC, sans-serif" font-size="11" fill="#2f7d52">进 TL;DR</text>
+  <text x="686" y="134" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#1f2933">单 URL → single-source</text>
+  <text x="686" y="156" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#1f2933">仅社区/二手 → high-risk</text>
+  <text x="686" y="176" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#5b6b7c">未标即判 P0 阻断</text>
+
+  <!-- no branch -->
+  <path d="M560,182 L560,244" stroke="#93a3b5" stroke-width="1.5" fill="none" marker-end="url(#arrow2)"/>
+  <text x="566" y="214" font-family="Segoe UI, PingFang SC, sans-serif" font-size="11" fill="#b45309">否</text>
+  <rect x="452" y="250" width="216" height="56" rx="10" fill="#fdf2f2" stroke="#e6a4a4"/>
+  <text x="468" y="274" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#1f2933">降级进「冲突与存疑」</text>
+  <text x="468" y="294" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#5b6b7c">报告第 4 章单列，不参与结论</text>
+
+  <!-- footer note -->
+  <text x="24" y="288" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#5b6b7c">评审最多补搜 2 轮</text>
+  <text x="24" y="308" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#5b6b7c">超出列入「未覆盖」</text>
+</svg>

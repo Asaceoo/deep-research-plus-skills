@@ -1,0 +1,22 @@
+item_id: 4
+title: 各方案已知缺陷与社区负面反馈
+status: done
+findings:
+  - id: f5
+    claim: 社区反馈 Qdrant 大规模分片调参成本高，运维文档不足
+    value: 分片调参需手工介入
+    field: ecosystem
+    source_url: https://www.reddit.com/r/vectordb/comments/1abc/qdrant_ops/
+    source_type: community
+    date: 2026-09-05
+    polarity: negative
+  - id: f6
+    claim: Milvus 在内存受限环境下 OOM 报错指向配置不当
+    value: 见 issue 复现步骤
+    field: ecosystem
+    source_url: https://github.com/milvus-io/milvus/issues/39210
+    source_type: code
+    date: 2026-09-22
+    polarity: negative
+uncertainties:
+  - 社区样本量有限，不能代表全部用户

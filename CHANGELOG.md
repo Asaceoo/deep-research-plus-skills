@@ -1,6 +1,45 @@
 # Changelog
 
 本项目的所有显著变更记录于此。格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
+`drp.py bump --level auto` 读取 `[Unreleased]` 段落判定递增级别：出现 BREAKING 判 major，出现 feat/新增 判 minor，其余判 patch。
+
+## [Unreleased]
+
+## [1.4.0] - 2026-10-26
+
+### Added — 可执行闸门与可校验产物
+- **新增 `scripts/drp.py` 工具层**：`validate` / `detect` / `init` / `gate` / `report` / `bump` / `package` / `selfcheck` 八个子命令，阶段推进由退出码（0/1/2）裁决，不再依赖模型自觉
+- **新增五道阶段闸门**：outline（条目互斥 + 反方条目 + 档位条目数 + 字段引用）、confirm（`confirmed`/`confirmed_at`/`confirmed_by` 三件套）、results（https 链接 + 日期 + 来源类型 + 反方证据）、review（证据绑定 + 单源/高风险标记 + 轮次上限）、report（六章齐全 + 尾注可解析 + 无裸域名 + 无 AI 腔）
+- **新增 `checklists/skill_audit.yaml`**：八条机器规则（闸门矩阵、自相矛盾对、软表述、虚假捆绑声明、manifest 完整性、机器契约入口、占位符、证据分级词汇）；**未知规则类型直接判 P1**，防止清单静默失效
+- **新增 `manifest.json`**：登记包内文件，打包时逐项校验存在性
+- **新增 `tests/` 92 条回归**：YAML 解析等值、frontmatter、规则引擎、五道闸门的通过与失败路径、端到端流水线、版本与打包确定性
+- **新增 `docs/user-guide.md`、`docs/technical-manual.md`**：重写为面向 v1.4.0 的双手册，版本头由 `bump` 自动同步
+- **新增 `docs/adversarial-review.md`**：三视角对抗审查记录，含真实命令输出与四轮收敛表
+- **新增三张概念图**：流水线与闸门、证据绑定与放行判定、产物与发布链路
+- **新增 `package` 确定性构建**：固定时间戳 + 路径排序的 zip、`SHA256SUMS.txt`、`BUILD-MANIFEST.json`（逐文件 sha256）、`release-notes-v<版本>.md`
+
+### Fixed
+- **修正 Phase 3.5「🛑 强制」与轻量档「允许跳过」的自相矛盾**：改为「闸门矩阵（按档位）」，逐档写明必跑项与允许省略项
+- **修正复杂度分档边界重叠**（原 3 与 8 同时落在两档）：改为互斥区间，轻量 1-3 / 标准 4-8 / 深度 ≥9，并纳入 outline 闸门硬校验
+- **修正能力矩阵自相矛盾**：原写「文件读取缺失 → 跳过子技能检测」，但检测方法本身依赖文件系统；改为「无法读文件系统 → 全降级模式」
+- **修正引用纪律只有 `source_url` 没有格式约束**：升级为 https 完整链接 + `YYYY-MM-DD` + 五类 `source_type` 三要素强校验，杜绝裸域名与相对时间
+- **修正「已捆绑 sub-skills」的表述边界**：该声明对源码仓库成立、对解压后的技能目录不成立；改为指针表 + `drp.py detect` 实测探测，并在 README 区分「完整安装」与「zip 安装」
+- **修正 `gate` 单阶段文本模式恒返回 0** 的实现缺陷：退出码按阶段累计
+- **修正内置 YAML 解析与 PyYAML 在块标量尾换行上的不一致**：按 clip 语义补齐，`|-` 不补
+- **修正通配路径（如 `docs/*.md`）被误判为悬空引用**：命中 0 个文件才报错
+- **修正路径误报**：调研产物路径（`{slug}/report.md`、`results/`）不再被当作包内文件校验，改为「首段命中包内条目才校验 + 相似度笔误探测」
+
+### Changed
+- 阶段闸门从「口头自觉」改为脚本硬校验；无命令执行能力的平台降级为人工复核，报告头标 `manual-gate`
+- 反例黑名单从 R1-R6 扩充到 R1-R8，新增「评审补搜无上限」与「报告头缺元信息」
+- `init` 脚手架从「2 条目 + standard 档」改为「4 条目（含 1 反方）+ standard 档」，保证新工作区能直接过 outline 闸门
+- 文档命名对齐仓库既有约定：`docs/user-guide.md`、`docs/technical-manual.md`
+
+### Verified
+- `python -m pytest tests -q` → 92 passed
+- `python scripts/drp.py validate` → 0 error / 0 warning（PyYAML 与 `-S` 零依赖双路径）
+- `python scripts/drp.py selfcheck` → 14 项全 PASS
+- 真机验证：安装到 `~/.workbuddy/skills/deep-research-plus` 后 `detect` 报 zero-degradation，五道闸门全链路退出码 0
 
 ## [1.3.1] - 2026-10-03
 

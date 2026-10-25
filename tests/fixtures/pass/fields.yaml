@@ -1,0 +1,10 @@
+fields:
+  - name: license
+    type: fact
+    required: true
+  - name: perf
+    type: fact
+    required: true
+  - name: ecosystem
+    type: judgement
+    required: false

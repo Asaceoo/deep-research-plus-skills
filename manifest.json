@@ -1,0 +1,43 @@
+{
+  "name": "deep-research-plus",
+  "version": "1.4.0",
+  "entry": "SKILL.md",
+  "license": "MIT",
+  "updated_at": "2026-10-26",
+  "summary": "深度调研融合编排层：按话题类型路由信息源，跑大纲-确认-深调-反方评审-报告流水线，带机器可执行闸门",
+  "author": "asaceoo",
+  "requires_python": ">=3.8",
+  "runtime_deps": [],
+  "optional_deps": [
+    "PyYAML（缺失时自动回退内置子集解析）"
+  ],
+  "tools": {
+    "validate": "校验技能包结构与清单规则",
+    "detect": "探测依赖子技能并输出降级方案",
+    "init": "初始化调研工作区",
+    "gate": "阶段闸门（outline/confirm/results/review/report）",
+    "report": "渲染六章报告",
+    "bump": "语义化版本递增并同步文档",
+    "package": "构建 zip/SHA256/release notes",
+    "selfcheck": "清单兜底与流水线回归"
+  },
+  "artifacts": [
+    "dist/deep-research-plus-v<version>.zip",
+    "dist/SHA256SUMS.txt",
+    "dist/release-notes-v<version>.md"
+  ],
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "scripts/drp.py",
+    "checklists/skill_audit.yaml",
+    "docs/user-guide.md",
+    "docs/technical-manual.md",
+    "docs/adversarial-review.md",
+    "docs/assets/pipeline.svg",
+    "docs/assets/degradation.svg",
+    "docs/assets/artifacts.svg"
+  ]
+}

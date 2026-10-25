@@ -1,155 +1,228 @@
-# Deep Research Plus 技术手册
+# 技术手册
 
-> **版本：v1.3.0（跨平台通用版）** ｜ 更新日期：2026-10-02 ｜ 面向读者：维护者、二次开发者、想理解内部机制的 Agent
+> 版本：1.4.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
----
+## 1. 设计目标与不变量
 
-## 1. 架构总览
+| # | 不变量 | 落地方式 |
+|---|--------|----------|
+| I1 | 版本号只有一个事实源 | `SKILL.md` frontmatter `version`；`bump` 从它推导并回写其余文件 |
+| I2 | 闸门可执行，不靠自觉 | 每个阶段一个 `gate --stage`，退出码 0/1/2 |
+| I3 | 规则不得静默失效 | 清单里出现未知规则类型 → 直接 P1，不跳过 |
+| I4 | 引用可回指 | 结论必须绑定 finding id；finding 必须带 https URL + 日期 + 类型 |
+| I5 | 零第三方硬依赖 | 全部脚本 stdlib；PyYAML 只是加速路径 |
+| I6 | 产物可校验 | zip 内 `BUILD-MANIFEST.json` 逐文件 sha256；外层 `SHA256SUMS.txt` |
 
-deep-research-plus 是**编排层技能**：自身不含搜索/爬取实现，只定义「流程编排 + 质量纪律 + 降级策略」，通过指针表引用 4 个子技能的详细流程。
+## 2. 架构
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                deep-research-plus (编排层)                │
-│                                                         │
-│  Phase 0 意图分流+分档 ─ Phase 1 大纲 ─ Phase 2 确认闸门   │
-│        │                                    │           │
-│        ▼                                    ▼           │
-│  Phase 3 并行深调 ──► Phase 3.5 反方评审 ──► Phase 4 报告 │
-│        │                                    │           │
-│        ▼                                    ▼           │
-│  Phase 5 交付升级（HTML 信息图 / NotebookLM）             │
-└──────────┬──────────┬──────────┬──────────┬─────────────┘
-           ▼          ▼          ▼          ▼
-     deep-research  research  agent-reach  market-researcher
-      (主干四阶段)  (引用纪律)  (源路由)     (商业标注)
-           └──────────┴──────────┴──────────┘
-              每个均可缺失，按降级列执行
+SKILL.md                 技能入口，只写「怎么串」+ 能力矩阵 + 闸门矩阵
+checklists/
+  skill_audit.yaml       八条机器规则（文本层约束）
+scripts/
+  drp.py                 单文件工具层
+    ├── YAML 层          PyYAML 优先 / yamlmini 子集兜底
+    ├── 校验层           frontmatter / 路径 / 版本 / 许可 / 结构 / 清单规则
+    ├── 闸门层           outline / confirm / results / review / report
+    ├── 渲染层           report.md 六章 + 尾注自动编号
+    └── 发布层           bump / package / selfcheck
+docs/                    用户手册 · 技术手册 · 对抗性审查记录 · 概念图
+tests/                   单元 / 契约 / 端到端 / 负路径
 ```
 
-**设计原则：指针不重复。** 编排层只写"怎么串、按什么纪律串"，子技能的详细流程（如 deep-research 的 outline.yaml schema）以指针引用，避免双份维护漂移。
+分层原则：`SKILL.md` 面向模型，`checklists` 面向文本约束，`scripts` 面向可判定事实。三者不互相复制内容，避免改一处漏三处。
 
-### 1.1 捆绑子技能分发（v1.2.0 新增）
+## 3. 数据契约
 
-仓库 `sub-skills/` 目录捆绑 4 个子技能，使克隆即完整可执行：
+### 3.1 outline.yaml
 
-| 子技能 | 捆绑版本 | 文件数 | 运行时依赖 |
-|--------|----------|--------|-----------|
-| deep-research | 1.0.0 | 20（中英双版 + web-search-agent） | pyyaml（仅 validate_json.py） |
-| research | — | 1 | 无 |
-| agent-reach | 1.1.0 | 4（skill-card + 元数据） | 无 |
-| market-researcher | 1.0.1 | 2 | 无 |
+| 字段 | 类型 | 必填 | 约束 |
+|------|------|------|------|
+| `topic` | str | 是 | 话题原文 |
+| `slug` | str | 是 | 产物目录名 |
+| `tier` | enum | 是 | `light` / `standard` / `deep` |
+| `type` | enum | 是 | `tech` / `market` / `community` / `mixed` |
+| `confirmed` | bool | Phase 2 起必填 | 必须为 `true` 才放行 |
+| `confirmed_at` | str | Phase 2 起必填 | `YYYY-MM-DD`，不得晚于今天 |
+| `confirmed_by` | str | Phase 2 起必填 | 谁确认的（用户标识） |
+| `items[]` | list | 是 | 非空；id 唯一；title 唯一 |
+| `items[].id` | int | 是 | 与 `results/item_<id>.yaml` 对应 |
+| `items[].kind` | enum | 否 | `normal`（默认）/ `counter` |
+| `items[].fields` | list[str] | 否 | 必须在 fields.yaml 中定义 |
+| `items[].status` | enum | 否 | `pending` / `done` / `partial` |
 
-捆绑规则：
+档位与条目数：`light` 1-3，`standard` 4-8，`deep` ≥9。超出即 P0/P1 拦截。
 
-- **原样收录**：内容不修改（仅移除 `__pycache__` 等运行时产物），保证与上游行为一致，便于后续跟随上游更新。
-- **版权隔离**：仓库根 MIT License 不覆盖 `sub-skills/`；各子技能版权归原作者，声明见 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)。
-- **升级路径**：跟随上游更新时，整目录替换 `sub-skills/<name>/` 并在 CHANGELOG 记录捆绑版本号变化。
+### 3.2 fields.yaml
 
-## 1.5 平台适配层（v1.3.0 通用化）
+| 字段 | 类型 | 约束 |
+|------|------|------|
+| `fields[].name` | str | 唯一，被 outline 引用 |
+| `fields[].type` | enum | `fact` / `judgement` |
+| `fields[].required` | bool | 缺省 true |
 
-v1.2.x 及之前依赖平台专属工具名（Task / AskUserQuestion / Glob / `~/.workbuddy` 路径），仅 WorkBuddy/Claude Code 可完整执行。v1.3.0 起改为**能力需求 + 降级语义**，平台矩阵：
+### 3.3 results/item_N.yaml
 
-| 平台 | 搜索 | 抓取 | 子代理 | 文件 | 执行形态 |
-|------|:---:|:---:|:---:|:---:|----------|
-| WorkBuddy / Claude Code / Codex / OpenCode / OpenClaw | ✅ | ✅ | ✅ | ✅ | 完整：并行子代理 + 落盘 + 断点续跑 |
-| Cursor | ✅ | ✅ | ❌ | ✅ | 串行深调（逐项小结防上下文过载） |
-| WPS AI | ✅ | 部分 | ❌ | ❌ | 对话内分段输出报告 |
-| 任意对话式 AI（粘贴模式） | 视平台 | 视平台 | ❌ | ❌ | 全降级；无抓取时引用标 `summary-level` |
+| 字段 | 类型 | 约束 |
+|------|------|------|
+| `item_id` | int | 必须等于文件名中的 N |
+| `status` | enum | `pending` / `done` / `partial` |
+| `findings[].id` | str | 全局唯一（跨 item） |
+| `findings[].claim` | str | ≥8 字符 |
+| `findings[].value` | str | 关键数值/事实，可比总表直接取用 |
+| `findings[].field` | str | 关联 fields.yaml，用于字段覆盖检查 |
+| `findings[].source_url` | str | 必须 `https://` 开头 |
+| `findings[].source_type` | enum | `official` / `code` / `secondary` / `community` / `journalism` |
+| `findings[].date` | str | `YYYY-MM-DD`，不得晚于今天 |
+| `findings[].polarity` | enum | `positive` / `negative` / `neutral` |
+| `uncertainties[]` | list[str] | 反方条目的兜底证据 |
 
-改造要点：
+### 3.4 review.yaml
 
-- **frontmatter 去平台化**：移除 `allowed-tools`（平台专属工具名），能力需求移入正文矩阵。
-- **能力降级语义**：每项能力的降级路径唯一且明确（见 SKILL.md 能力矩阵），报告头部强制声明「能力组合」，读者可据此判断证据强度（如 `summary-level` 引用未经原文核验）。
-- **子技能多目录检测**：依次探测 `~/.workbuddy/skills/`、`~/.claude/skills/`、`~/.codex/skills/`、`~/.config/opencode/skills/`、项目 `.skills/`；无文件系统平台询问用户，否则全降级。
-- **确认闸门通用化**：AskUserQuestion → 任何对话往轮机制（交互组件平台用选项卡，其余平台自然语言问询）。
-- **串行等价实现**：无子代理时"逐项完成→写一行小结→搜下一项"，等价实现回传纪律的上下文保护。
+| 字段 | 类型 | 约束 |
+|------|------|------|
+| `rounds` | int | 1-2；>2 判 P0（R7） |
+| `capabilities` | str | 写入报告头的能力组合 |
+| `decisions[].id` | str | 唯一 |
+| `decisions[].claim` | str | 不得命中 AI 腔黑名单 |
+| `decisions[].level` | enum | `decision` / `supporting` |
+| `decisions[].evidence` | list[str] | 必须全部命中 findings id，否则 P0（R5） |
+| `decisions[].flags` | list[str] | `single-source` / `high-risk`，由闸门强校验 |
+| `conflicts[]` | list[str] | 进报告第 4 章 |
+| `uncovered[]` | list[str] | 进报告第 5 章 |
+| `corrections[]` | list[str] | 记录本轮评审改了什么 |
 
-**兼容性承诺**：v1.3.0 起新增平台支持不再需要改技能文件——只要平台具备「联网搜索 + 对话」即声明可运行，能力差异全部由降级矩阵吸收。
+### 3.5 report.md
 
-## 2. 设计依据（8 方案对标调研，2026-10-02）
+六章固定标题（缺一即 P0）：核心结论 / 对比总表 / 逐项详析 / 冲突与存疑 / 未覆盖与限制 / 来源清单。
+首行元信息必须含四项：`调研日期`、`分档`、`能力组合`、`评审`。
+尾注 `[^id]` 必须在来源清单有 `[^id]: <https://...> ｜ YYYY-MM-DD ｜ type` 定义。
 
-v1.1.0 的三项核心机制非拍脑袋，来自对 8 个成熟方案的深度调研（一手来源+日期）：
+## 4. 闸门实现
 
-| 机制 | 依据 | 关键数据 |
+| stage | 入口函数 | 主要检查 | 失败码段 |
+|-------|----------|----------|----------|
+| outline | `gate_outline` | 字段齐全、id/标题唯一、反方条目、档位条目数、字段引用 | G-OUT-00x |
+| confirm | `gate_confirm` | `confirmed=true`、日期合法且非未来、确认人非空 | G-CON-00x |
+| results | `gate_results` | 文件对应、finding 必填、https、日期、类型、反方证据、字段覆盖 | G-RES-00x |
+| review | `gate_review` | 轮次 ≤2、决策非空、证据 id 命中、单源/社区源标记、AI 腔 | G-REV-00x |
+| report | `gate_report` | 六章齐全、元信息、尾注可解析、裸域名、AI 腔、TL;DR 数量 | G-REP-00x |
+
+### 4.1 严重级语义
+
+| 级别 | 含义 | 打包时 |
+|------|------|--------|
+| P0 | 事实错误/契约破坏，继续跑一定产出错误结果 | 阻断 |
+| P1 | 规范违背，结果可信度受损 | 阻断 |
+| P2 | 建议性/覆盖度提示 | 记 warnings，不阻断 |
+
+### 4.2 关键判定逻辑
+
+- **单源判定**：`decisions[].evidence` 推出的 URL 去重集合大小为 1 → 必须含 `single-source`。
+- **高风险判定**：证据的 `source_type` 集合 ⊆ {`community`, `secondary`} 且 level=decision → 必须含 `high-risk`。
+- **复核轮次**：`rounds > 2` 直接失败，而不是警告——无限补搜是流程失控的典型信号。
+- **AI 腔**：正则黑名单在 `SKILL.md`（跳过「反例黑名单」章节）与 `report.md/review.yaml` 全文分别扫描；后者不豁免任何章节。
+
+## 5. 规则引擎（清单层）
+
+`checklists/skill_audit.yaml` 的每条规则是 `{id, type, severity, params}`。已实现的 type：
+
+| type | 作用 | 关键参数 |
 |------|------|----------|
-| **复杂度分档**（Phase 0） | Anthropic 多 Agent 研究系统 + Gemini 双档制 | 多 agent 比单 agent +90.2% 效果，但 15× token（Anthropic 工程博客 2025-06-13）；Gemini 标准/Max 双档 €1-3 vs €3-7/任务 |
-| **反方评审闸门**（Phase 3.5） | daymade 反方评审团 + RhinoInsight Evidence Audit | RhinoInsight RACE 50.92 > OpenAI DR 46.45（arXiv:2511.18743，作者自建基准，已标注存疑） |
-| **子代理回传纪律**（Phase 3） | Anthropic 一手经验 | 上下文污染是多 agent 系统头号故障源；子代理只回传结构化 findings |
+| `gate_matrix` | 校验档位×闸门矩阵表存在 | 无 |
+| `conflict_pairs` | 两组正则不得同时出现（自相矛盾检测） | `pairs` |
+| `forbidden_patterns` | 禁用语扫描 | `patterns`、`ignore_in_sections` |
+| `required_patterns` | 必需内容扫描 | `patterns`、`hint` |
+| `claim_requires_dir` | "已捆绑"类声明必须目录真实存在 | `claims[].pattern/requires_dir` |
+| `manifest_files_exist` | manifest 字段齐全 + 登记文件存在 | `required_keys` |
 
-**明确排除的设计**（对会话内轻量技能属过度设计）：LangGraph 图状态机、13-agent 全编队（brycewang-stanford）、服务化检索依赖（向量库/图数据库）。
+扩展方式：实现 `check_xxx(skill_dir, body, params, rule_id, severity)`，注册进 `RULE_HANDLERS`，再写清单条目。
+**未注册的 type 会产出 `CHK-000` P1**，这是刻意设计：清单加错字不能导致"检查通过"。
 
-## 3. 流程引擎内部机制
+## 6. 错误码速查
 
-### 3.1 Phase 0 — 分档决策表
+| 段 | 覆盖 | 处理方向 |
+|----|------|----------|
+| FM-002..005 | frontmatter 缺字段/版本非法/名称不一致/缺 Triggers | 改 SKILL.md 头部 |
+| SEC-001..003 | 缺章节/缺阶段/缺硬停标记 | 补结构 |
+| PATH-001/003/004 | 相对路径不存在/虚假捆绑声明/疑似笔误 | 删指针或补文件 |
+| DOC-001/002 | 文档缺版本头/版本不一致 | `bump` 或手工同步 |
+| LIC-001 | 声明 license 无 LICENSE | 补文件 |
+| CHK-001..008 | 清单规则命中 | 按 detail 修 SKILL.md |
+| G-OUT-001..018 | 大纲问题 | 见用户手册 §8 |
+| G-CON-001..005 | 未确认/日期非法/确认人缺失 | 补 confirmed 三件套 |
+| G-RES-001..016 | 证据缺失/链接非 https/日期非法/类型非法 | 补证据字段 |
+| G-REV-001..012 | 评审缺失/轮次超限/证据未绑定/未标标记 | 补 review.yaml |
+| G-REP-001..009 | 报告缺章/尾注未定义/裸域名/AI 腔 | 重跑 `report` |
 
-| 档位 | 判据 | 执行差异 |
-|------|------|----------|
-| 轻量 | ≤3 items、单点事实 | 主代理直搜；跳过 Phase 2 正式闸门（口头确认）；跳过 Phase 3.5 |
-| 标准 | 3-8 items | 2-3 路并行子代理（按源路由分组）；评审开 |
-| 深度 | >8 items / 跨领域 / 用户点名 | 每项独立子代理；评审全开 |
+## 7. YAML 解析层
 
-### 3.2 Phase 1 — 大纲产物契约
+策略：`import yaml` 成功则用 PyYAML（自定义 loader 把 timestamp 保持为字符串，避免与内置解析结果不一致）；失败则用 `loads()`。
 
-落盘 `{topic_slug}/outline.yaml` + `fields.yaml`：
+`yamlmini` 支持的子集：注释、嵌套映射、`- ` 序列（含 `- key: value` 起头的映射项）、行内 `[a, b]` / `{k: v}`、单双引号、整数/浮点/布尔/null、`|` 与 `>` 块标量（缩进按最小缩进合并）。
 
-- `items[]`：调研条目，互斥不重叠，**必须含 1-2 个反方 item**（竞品缺陷/失效场景/反对观点）——大纲级预检保证，缺反方视角的大纲天然只收正面证据
-- `fields{}`：事实型字段强制 `source_url`；建议 `source_type` ∈ {official, code, secondary, community, journalism}
+不支持的语法：锚点/别名（`&`/`*`）、多文档（`---` 分隔的多个 doc）、复杂流式嵌套。
+遇到不支持语法应安装 PyYAML 或改写文件；`loads` 会抛 `YamlError`，CLI 转成退出码 2 而不是 traceback。
 
-### 3.3 Phase 3 — 双纪律 + 两条工程约束
+一致性由 `tests/test_yamlmini.py` 保证：同一批 fixture 分别用两种解析器解析，断言结果深度相等。
 
-1. **一手来源优先**：官方文档/源码/spec > 二手文章；引用追溯到拥有该事实的源头。
-2. **源路由**：user feedback/真实使用信号 → agent-reach 频道；统计/新闻 → WebSearch。
-3. **子代理回传纪律**：只回传结构化 findings（事实+URL+日期），不回传网页原文、不写文件——防上下文污染。
-4. **断点续跑**：逐 item 落盘 `results/item_N.yaml`；重跑先扫已有编号，只补缺失。
+## 8. 版本与打包
 
-### 3.4 Phase 3.5 — 反方评审四检查 + 修订上限
+```
+SKILL.md.version  ──bump──▶  manifest.json / README.md / docs/*.md / CHANGELOG.md
+                          └─▶ dist/deep-research-plus-v<ver>.zip
+                              dist/SHA256SUMS.txt
+                              dist/release-notes-v<ver>.md
+```
 
-| 检查 | 规则 | 未过处理 |
-|------|------|----------|
-| 证据绑定 | 每条结论回指 results 中具体证据（URL+类型+日期） | 降级进「冲突与存疑」，不得以"综合判断"保留 |
-| 官方数据偏差 | 性能/份额/准确率数字仅当事方自述时 | 标注"官方口径，未见第三方复现" |
-| 单源标记 | 仅 1 个来源支撑的结论 | 标 `single-source` |
-| 去 AI 腔 | 删套话/数字不堆形容词/每节首句直给事实 | 行文时逐条过 |
+- **递增判定**：读 `CHANGELOG.md` 的 `[Unreleased]` 条目；含 `BREAKING`/不兼容 → major；含 `feat`/`新增`/`增加`/`支持` → minor；有其它条目 → patch；空 → 不递增。
+- **同步范围**：`README.md`、`docs/*.md` 中的 `版本：x.y.z` 与 `更新：YYYY-MM-DD`。
+- **CHANGELOG 重写**：保留空的 `[Unreleased]` 段，新增 `[x.y.z] - 日期` 段，正文取原 Unreleased 条目。
+- **zip 确定性**：文件按路径排序，固定时间戳 `1980-01-01`，deflate level 9，权限 644；同名产物可比对 sha256。
+- **BUILD-MANIFEST.json**：打包瞬间记录每个文件的 sha256 与字节数，位于 zip 根，不写入源目录，避免自我引用。
 
-**修订上限 ≤2 轮**：评审缺漏最多补搜 2 轮，超出列入报告 §5「未覆盖与限制」——防调研永不收敛。
+## 9. 测试策略
 
-### 3.5 Phase 4 — 报告 schema
+| 层 | 文件 | 覆盖 |
+|----|------|------|
+| 单元 | `test_yamlmini.py` | 与 PyYAML 等值；块标量、行内集合、引号、注释 |
+| 契约 | `test_frontmatter.py` | frontmatter 解析、非法版本、缺字段 |
+| 规则 | `test_rules.py` | 六类 handler 的正反例；未知 type 报 CHK-000 |
+| 闸门 | `test_gates.py` | 每个 stage 的通过/失败路径，逐条错误码断言 |
+| 端到端 | `test_pipeline.py` | init → outline → confirm → results → review → report → gate 全链路 |
+| 发布 | `test_package.py` | bump 三级、文档同步、zip 内容、SHA256、release notes |
+| 真机 | 手工 + `selfcheck` | 安装到真实 skills 目录后跑 detect/validate/全链路 |
 
-六章节强制结构（TL;DR带引用 → 对比总表 → 逐项详析 → 冲突与存疑 → 未覆盖与限制 → 来源清单分组）。报告头部声明：日期、方法、版本、分档、评审状态。
+运行：
 
-## 4. 降级矩阵（全链路可降级）
+```bash
+python -m pytest tests -q
+python scripts/drp.py selfcheck
+```
 
-| 缺失组件 | 降级行为 | 报告标注 |
-|----------|----------|----------|
-| deep-research | 内置简化流程：对话确认清单替代 outline.yaml | "主干：内置简化版" |
-| research | 纪律保留，WebSearch+WebFetch 执行 | 无需标注（纪律不可降级） |
-| agent-reach | 跳过社媒源，仅 WebSearch | "源路由：仅 Web 搜索" |
-| market-researcher | 通用引用规范 | 商业类话题需注明 |
-| notebooklm-studio | 跳过 Phase 5 播客出口 | Google 不可达时明确告知 |
+负路径必须覆盖：http 链接、缺日期、裸域名、无反方条目、评审超 2 轮、证据 id 不存在、报告缺章、尾注未定义、AI 腔命中。
 
-## 5. 版本号规范（发布流程）
+## 10. 已知限制
 
-- **单一来源**：`SKILL.md` frontmatter `version` 字段。
-- **发布操作**：改 SKILL.md → bump version → 同步更新 CHANGELOG.md + 两份手册头部版本 → git tag `vX.Y.Z` → push。
-- **捆绑版本联动**：`sub-skills/` 内任一子技能升级时，编排层 version 升 minor（如捆绑集变化 1.1.0 → 1.2.0），CHANGELOG 记录各子技能捆绑版本号。
-- **递增规则**：语义化版本——编排流程结构性变更升 minor（如 1.1.0 加分档），错字/链接修复升 patch。
+1. 不做 URL 存活检测（要求离线可跑）。链接失效靠反方评审人工开页发现。
+2. `yamlmini` 不支持锚点/多文档，复杂 YAML 需装 PyYAML。
+3. 文件时间戳统一为 1980-01-01，zip 内文件时间不反映真实构建时间（换确定性）。
+4. 工作区并发写无锁；同一 `{topic_slug}` 不要两个进程同时跑。
+5. `report` 渲染是确定性模板，不负责改写文风；去 AI 腔靠 `gate` 拦 + 人改。
+6. 轻量档不产 `report.md`，因此 `gate --stage report` 对轻量档不适用（见闸门矩阵）。
 
-## 6. 扩展指南
+## 11. 扩展指南
 
-**接入新子技能**：在指针表加一行（子技能 | 路径 | 角色 | 降级列），在对应 Phase 写入调用点与降级行为。原则：新技能必须是"能独立缺失"的增强项，不得成为硬依赖。
+**加一条文本规则**：清单里加条目 → 用已有 type；缺 type 就实现 handler 并注册。改完 `validate` + `selfcheck` 双跑。
 
-**调整分档阈值**：Phase 0 判据表的 items 数值（3 / 8）是可调参数；若宿主 Agent 子代理并发能力强（如 >5 路稳定），可上移标准档上限。
+**加一个闸门阶段**：写 `gate_xxx(workspace, strict)` → 注册进 `GATES` → 更新 SKILL.md 的闸门矩阵（CHK-001 会检查表里是否有三档行）→ 补测试。
 
-**评审规则扩展**：Phase 3.5 四检查可按领域追加（如学术类加"预印本 vs 发表版"检查），但**修订上限 ≤2 轮与证据绑定降级规则不可移除**——它们是反"幻觉性收敛"的底线。
+**加一个 findings 字段**：先改渲染与 gate 两侧（渲染取 `value`，gate 校验必填），再改本文档 §3.3，最后补测试，避免文档与实现漂移。
 
-## 7. 已知限制
+## 12. 发布检查单（人工）
 
-- 依赖宿主 Agent 的 Task（子代理）能力；无 Task 的平台只能跑轻量档。
-- agent-reach 各平台可用性随 cookie/代理状态波动，源覆盖非确定性。
-- 反方评审是单轮对抗审查（非 daymade 式多评委独立打分）——轻量编排的有意取舍。
-- 报告对比总表的"所见即最新"以数据截点日期为准，不做实时刷新。
-
-## 8. 变更历史
-
-见 [CHANGELOG.md](../CHANGELOG.md)。
+1. `python scripts/drp.py selfcheck` 全 PASS
+2. `python -m pytest tests -q` 全通过
+3. `python scripts/drp.py package` 自动递增并出包
+4. 解压到临时目录，`validate` + `version` 复核
+5. 上传源码与 `dist/` 三件套到 Release，正文用 `release-notes-v<版本>.md`

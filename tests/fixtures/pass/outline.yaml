@@ -1,0 +1,33 @@
+topic: 2026 开源向量库选型
+slug: vector-db-selection
+tier: standard
+type: tech
+confirmed: true
+confirmed_at: "2026-10-20"
+confirmed_by: user
+items:
+  - id: 1
+    title: Milvus 许可证与商业可用性
+    kind: normal
+    fields: [license]
+    status: done
+  - id: 2
+    title: Qdrant 许可证与商业可用性
+    kind: normal
+    fields: [license]
+    status: done
+  - id: 3
+    title: Weaviate 性能口径
+    kind: normal
+    fields: [perf]
+    status: done
+  - id: 4
+    title: 各方案已知缺陷与社区负面反馈
+    kind: counter
+    fields: [ecosystem]
+    status: done
+  - id: 5
+    title: 三方 benchmark 横向对比
+    kind: normal
+    fields: [perf]
+    status: done

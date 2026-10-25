@@ -1,0 +1,14 @@
+item_id: 5
+title: 三方 benchmark 横向对比
+status: done
+findings:
+  - id: f7
+    claim: 第三方 benchmark 显示三者在 recall 0.95 时延迟差距小于 15%
+    value: 延迟差距 12%
+    field: perf
+    source_url: https://ann-benchmarks.com/
+    source_type: secondary
+    date: 2026-07-01
+    polarity: neutral
+uncertainties:
+  - benchmark 数据集与生产分布不一致

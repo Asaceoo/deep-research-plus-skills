@@ -1,0 +1,13 @@
+item_id: 1
+title: Milvus 许可证与商业可用性
+status: done
+findings:
+  - id: f1
+    claim: Milvus 采用 Apache-2.0 许可证，允许闭源商用
+    value: Apache-2.0
+    field: license
+    source_url: https://milvus.io/docs/overview.md
+    source_type: official
+    date: 2026-09-18
+    polarity: positive
+uncertainties: []

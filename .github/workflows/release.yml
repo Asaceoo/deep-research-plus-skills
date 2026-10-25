@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-release:
+    # 只有提交信息带 [release] 或手动触发时才发版，避免每次推送都出包
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test deps
+        run: python -m pip install --quiet pytest pyyaml
+
+      - name: Run regression
+        run: python -m pytest tests -q
+
+      - name: Validate skill package
+        run: python scripts/drp.py validate
+
+      - name: Checklist selfcheck
+        run: python scripts/drp.py selfcheck
+
+      - name: Build artifacts (no bump: version already committed)
+        run: python scripts/drp.py package --no-bump --out dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(python scripts/drp.py version)
+          TAG="v${VERSION}"
+          ASSETS=(dist/deep-research-plus-v"${VERSION}".zip dist/SHA256SUMS.txt dist/release-notes-v"${VERSION}".md docs/user-guide.md docs/technical-manual.md README.md)
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${ASSETS[@]}" --clobber
+          else
+            gh release create "${TAG}" "${ASSETS[@]}" \
+              --title "deep-research-plus v${VERSION}" \
+              --notes-file "dist/release-notes-v${VERSION}.md"
+          fi
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

@@ -1,0 +1,60 @@
+# deep-research-plus 技能包清单（机器可执行兜底）
+# 由 scripts/drp.py validate / selfcheck 读取；规则类型不可随意新增，
+# 未知类型会直接判 P1，避免清单静默失效。
+meta:
+  owner: asaceoo
+  applies_to: SKILL.md
+  note: 所有 severity 为 P0/P1 的规则命中即阻断打包
+rules:
+  - id: CHK-001
+    type: gate_matrix
+    severity: P0
+    desc: SKILL.md 必须有一张覆盖 light/standard/deep 的闸门矩阵表
+  - id: CHK-002
+    type: conflict_pairs
+    severity: P0
+    desc: 禁止自相矛盾表述
+    params:
+      pairs:
+        - ['跳过 Phase 2', 'Phase 2[^\n]{0,24}(硬停|强制)']
+        - ['无需引用', '每条结论必须带引用']
+  - id: CHK-003
+    type: forbidden_patterns
+    severity: P1
+    desc: 规范性章节禁止软表述（建议/尽量/酌情/视情况）
+    params:
+      patterns: ['建议', '尽量', '酌情', '视情况']
+      ignore_in_sections: ['反例黑名单', '使用示例', '中文备注']
+  - id: CHK-004
+    type: claim_requires_dir
+    severity: P0
+    desc: 声称「本仓库已捆绑」时目录必须真实存在
+    params:
+      claims:
+        - pattern: '本仓库[^\n]{0,20}已(捆绑|内置)'
+          requires_dir: sub-skills
+  - id: CHK-005
+    type: manifest_files_exist
+    severity: P0
+    desc: manifest.json 字段齐全且登记文件真实存在
+    params:
+      required_keys: [name, version, entry, license, files]
+  - id: CHK-006
+    type: required_patterns
+    severity: P0
+    desc: 必须给出可执行的机器契约入口
+    hint: 缺少脚本入口时 AI 只能靠自觉，闸门无法闭环
+    params:
+      patterns: ['drp\.py', 'gate --stage', 'bump', 'package']
+  - id: CHK-007
+    type: forbidden_patterns
+    severity: P1
+    desc: 技能正文不允许遗留占位符
+    params:
+      patterns: ['TODO', 'TBD', 'FIXME', '待补充']
+  - id: CHK-008
+    type: required_patterns
+    severity: P1
+    desc: 证据分级词汇必须出现，确保 R5/R6 可被引用
+    params:
+      patterns: ['single-source', 'high-risk', 'partial']

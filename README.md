@@ -1,125 +1,141 @@
-# Deep Research Plus — 深度调研融合流水线
+# Deep Research Plus
 
-> 跨平台 Agent Skill（Claude Code · OpenAI Codex · OpenCode · OpenClaw · WorkBuddy · Cursor · WPS AI · 任意对话式 AI 通用）。
-> 一个**编排层**技能：把 4 个调研能力串成一条流水线，产出**每条结论带一手引用**的结构化调研报告。
+> 版本：1.4.0 ｜ 更新：2026-10-26
 
-**当前版本：v1.3.1**（跨平台通用版 + 4 个捆绑子技能，克隆即完整可用） ｜ [变更日志](./CHANGELOG.md) ｜ [用户手册](./docs/user-guide.md) ｜ [技术手册](./docs/technical-manual.md) ｜ [第三方声明](./THIRD-PARTY-NOTICES.md) ｜ License: MIT
+![version](https://img.shields.io/badge/version-1.4.0-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![python](https://img.shields.io/badge/python-3.8%2B%20%7C%20%E9%9B%B6%E4%BE%9D%E8%B5%96-3776ab)
 
----
+一个**带闸门的深度调研编排层**。它不重复造搜索能力，而是把「大纲 → 确认 → 深调 → 反方评审 → 报告」串成流水线，并用可执行脚本卡住每一步：没证据的结论进不了 TL;DR，只靠社区的结论会被打上 `high-risk`，单源支撑会被打上 `single-source`。
+
+适用于 Claude Code / Codex / OpenCode / OpenClaw / WorkBuddy / Cursor / WPS AI 等任何能读 Markdown 的智能体。脚本层可选——没有命令执行能力时，全部闸门降级为人工复核并在报告头标 `manual-gate`。
 
 ## 它解决什么问题
 
-单次搜索的调研浅、漏来源、结论无引用；通用 deep-research 流程不分话题类型、不分复杂度，简单话题跑全编队浪费 token，复杂调研缺质量闸门产出易掺水。
+普通 deep research 的失败模式很稳定，而且都是**流程问题**，不是模型能力问题：
 
-deep-research-plus 的答案：
+| 失败模式 | 后果 | 本技能的拦截点 |
+|----------|------|----------------|
+| 大纲只收正面证据 | 结论天然偏向首选方案 | `kind: counter` 反方条目 + outline 闸门 |
+| 引用写裸域名 | 无法回溯，等于没有引用 | https + 日期 + 来源类型三要素强校验 |
+| 结论回指不到证据 | 观点冒充实证 | review 闸门：无 evidence 即 P0 |
+| 单源/社区源当决策依据 | 谣言进正式文档 | `single-source` / `high-risk` 强制标记 |
+| 评审越补越散 | 无限补搜，交期失控 | `rounds > 2` 直接判失败 |
+| 先写报告再补证据 | 结论倒逼证据 | 五道闸门按顺序放行 |
 
-- **按话题路由源**：技术选型追官方文档/源码一手来源；舆情口碑走 Reddit/GitHub issues/B站/小红书等社区信号；商业分析强制"来源+日期+假设暴露，查不到标 partial 不编造"。
-- **按复杂度分档**：轻量（主代理直搜）/ 标准（2-3 路并行子代理）/ 深度（全编队+评审全开）——依据 Anthropic 多 Agent 研究系统的缩放规则（多 agent +90.2% 效果，但 15× token，简单话题不值）。
-- **反方评审闸门**：起草后、定稿前强制对抗审查——证据绑定检查、官方自述数字标注、单源结论标记、修订上限 ≤2 轮、去 AI 腔清单。
+![流水线与三道闸门](docs/assets/pipeline.svg)
 
-## 设计原则：指针不重复
+## 三道硬闸门
 
-本技能是编排层，不复制子技能内容，只定义"怎么串"：
+| 闸门 | 卡什么 | 判定方式 |
+|------|--------|----------|
+| Phase 1 `outline` | 条目重叠、没有反方条目、字段未定义、档位与条目数不匹配 | `gate --stage outline` 退出码 |
+| Phase 2 `confirm` | 用户没确认就开跑（`confirmed` / `confirmed_at` / `confirmed_by` 缺一不放行） | `gate --stage confirm` |
+| Phase 3.5 `review` | 结论回指不到证据、单源未标、社区源冒充当决策依据、补搜超过 2 轮 | `gate --stage review` |
 
-| 子技能 | 角色 | 缺失时 |
-|--------|------|--------|
-| [Weizhena/Deep-Research-skills](https://github.com/Weizhena/Deep-Research-skills) | 主干：大纲→确认→并行深调→报告 四阶段 | 内置简化流程替代 |
-| [research](https://github.com/anthropics/skills)（一手来源纪律） | 每条结论追官方文档/源码/spec | 纪律保留，WebSearch+WebFetch 执行 |
-| [agent-reach](https://github.com/) | 14 平台社媒源路由（Twitter/Reddit/YouTube/B站/知乎等） | 跳过社媒源，仅 WebSearch |
-| market-researcher | 商业标注规范（来源+日期+置信度） | 跳过，通用引用规范 |
-
-**全链路可降级**：四个子技能缺任何一个都能跑，只是能力缩水，并在报告开头注明实际使用的工具组合。
-
-> 📦 四个子技能已随本仓库捆绑在 `sub-skills/` 目录（版权归原作者，见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)），完整安装后零降级。
+![证据绑定与放行判定](docs/assets/degradation.svg)
 
 ## 安装
 
-### 完整安装（推荐，克隆即完整可用）
+### 完整安装（推荐，克隆即零降级）
 
 ```bash
 git clone https://github.com/Asaceoo/deep-research-plus-skills.git
 cd deep-research-plus-skills
 
-# WorkBuddy
-mkdir -p ~/.workbuddy/skills
-cp SKILL.md ~/.workbuddy/skills/deep-research-plus/SKILL.md 2>/dev/null || { mkdir -p ~/.workbuddy/skills/deep-research-plus && cp SKILL.md ~/.workbuddy/skills/deep-research-plus/; }
+# 编排层
+mkdir -p ~/.workbuddy/skills/deep-research-plus
+cp -r SKILL.md manifest.json scripts checklists docs ~/.workbuddy/skills/deep-research-plus/
+
+# 四个子技能（版权归原作者，见 THIRD-PARTY-NOTICES.md）
 cp -r sub-skills/deep-research      ~/.workbuddy/skills/
 cp -r sub-skills/research           ~/.workbuddy/skills/
 cp -r sub-skills/agent-reach        ~/.workbuddy/skills/
 cp -r sub-skills/market-researcher  ~/.workbuddy/skills/
+
+python ~/.workbuddy/skills/deep-research-plus/scripts/drp.py detect   # 期望 zero-degradation
 ```
 
-把上面的 `~/.workbuddy` 换成对应平台目录即可适配其他平台：
+其他平台把 `~/.workbuddy` 换成对应目录：Claude Code `~/.claude/skills/`、Codex `~/.codex/skills/`、OpenCode `~/.config/opencode/skills/`、OpenClaw `~/.openclaw/`；Cursor / WPS AI 直接读 `SKILL.md` 并按能力矩阵降级。
 
-| 平台 | 技能根目录 | 执行形态 |
-|------|-----------|----------|
-| WorkBuddy | `~/.workbuddy/skills/` | 完整（并行子代理 + 落盘） |
-| Claude Code | `~/.claude/skills/` | 完整 |
-| OpenAI Codex | `~/.codex/skills/` | 完整 |
-| OpenCode | `~/.config/opencode/skills/`（自动扫描 Claude/Codex 目录） | 完整 |
-| OpenClaw | `~/.openclaw/` | 完整 |
-| Cursor | 项目 `.cursor/rules/` 或项目 `skills/` | 串行深调（无子代理，自动降级） |
-| WPS AI / 任意对话式 AI | 把 SKILL.md 内容粘贴进对话 / 自定义指令 / system prompt | 对话内输出报告（按平台能力降级） |
+### zip 安装（仅编排层）
 
-**通用模式**：v1.3.0 起技能无平台专属工具依赖——只要智能体能**联网搜索 + 对话**即可运行，能力差异由内置降级矩阵吸收（详见技术手册 §1.5）。
-
-**Python 依赖**（仅 deep-research 的校验脚本需要）：`pip install pyyaml`。
-
-### 最小安装（仅编排层，子技能自动降级）
+从 [Releases](https://github.com/Asaceoo/deep-research-plus-skills/releases) 下载 `deep-research-plus-vX.Y.Z.zip`，解压到 `skills/deep-research-plus/`。**zip 不含 sub-skills**，子技能缺失时 `detect` 会列出降级项，流水线仍可跑，能力缩水。
 
 ```bash
-git clone https://github.com/Asaceoo/deep-research-plus-skills.git
-mkdir -p ~/.workbuddy/skills/deep-research-plus
-cp deep-research-plus-skills/SKILL.md ~/.workbuddy/skills/deep-research-plus/SKILL.md
+unzip deep-research-plus-v1.4.0.zip -d ~/.workbuddy/skills/deep-research-plus
+python ~/.workbuddy/skills/deep-research-plus/scripts/drp.py validate
 ```
 
-**依赖**：宿主 Agent 需支持 Read / Write / Glob / WebSearch / WebFetch / Task（子代理）/ AskUserQuestion。未安装子技能时按降级矩阵自动降级（见技术手册 §4），能力缩水但流程完整。
+脚本零第三方依赖：有 PyYAML 用它，没有走内置子集解析。Python 3.8+。
 
-## 使用
+## 快速开始
 
+对话里直接说：
+
+> 深度调研一下 2026 年主流开源 TTS 方案，帮我选型。
+
+或者手工起一个工作区，把闸门当 CI 用：
+
+```bash
+D=~/.workbuddy/skills/deep-research-plus/scripts/drp.py
+
+python $D init --workspace ./tts --topic "2026 主流开源 TTS 方案"   # 4 条目骨架，含反方条目
+python $D gate --workspace ./tts --stage outline                    # 大纲闸门
+python $D gate --workspace ./tts --stage confirm                    # 用户确认后落盘再过
+python $D gate --workspace ./tts --stage results                    # 证据合规
+python $D gate --workspace ./tts --stage review                     # 反方评审
+python $D report --workspace ./tts                                  # 渲染六章报告
+python $D gate --workspace ./tts --stage report                     # 报告合规
 ```
-「用 deep-research-plus 调研 <话题>」
-→ Phase 0  定性话题类型 + 复杂度分档（轻量/标准/深度）
-→ Phase 1  产出调研大纲（items + fields），你确认前可增删
-→ Phase 2  🛑 确认闸门：大纲获你明确确认后才开搜
-→ Phase 3  并行深调（一手来源优先 + 源路由双纪律，逐项落盘支持断点续跑）
-→ Phase 3.5 🛑 反方评审：证据绑定 / 官方口径标注 / 单源标记 / 去AI腔
-→ Phase 4  汇总报告 report.md（TL;DR带引用 → 对比总表 → 逐项详析 → 冲突存疑 → 未覆盖 → 来源清单）
-→ Phase 5  可选升级：杂志风 HTML 信息图 / NotebookLM 播客思维导图
-```
+
+## 命令一览
+
+| 命令 | 作用 |
+|------|------|
+| `validate` | 校验 frontmatter / 悬空路径 / 文档版本 / 清单规则 |
+| `detect` | 探测四个依赖子技能，输出降级方案 |
+| `init` | 生成 outline / fields / review 骨架 |
+| `gate --stage <stage>` | 阶段闸门：outline / confirm / results / review / report |
+| `report` | 渲染六章报告（自动生成尾注引用） |
+| `bump` | 语义化版本递增，同步 SKILL.md / 文档 / README / CHANGELOG |
+| `package` | 自动递增 + 全量校验 + zip + SHA256 + release notes |
+| `selfcheck` | 清单逐条复核 + 内置流水线回归 |
+
+退出码：`0` 通过 / `1` 有违规 / `2` 用法或环境错误。全部子命令支持 `--json`，便于接 CI 或其它 agent。
+
+## 产物
+
+![产物与发布链路](docs/assets/artifacts.svg)
+
+`package` 产出三件套：`deep-research-plus-v<版本>.zip`、`SHA256SUMS.txt`、`release-notes-v<版本>.md`。zip 内附 `BUILD-MANIFEST.json`，逐文件记录 sha256，可校验来源与完整性。
 
 ## 文档
 
 | 文档 | 内容 |
 |------|------|
-| [用户手册](./docs/user-guide.md) | 安装、触发、分档选择、四阶段体验、报告解读、FAQ（v1.3.0） |
-| [技术手册](./docs/technical-manual.md) | 架构、平台适配层、设计依据（8 方案对标调研）、闸门机制、降级矩阵、扩展指南（v1.3.0） |
+| [用户手册](./docs/user-guide.md) | 安装、五个真实场景、标记含义、故障排查 |
+| [技术手册](./docs/technical-manual.md) | 架构、数据契约、闸门实现、错误码、规则引擎、扩展指南 |
+| [对抗性审查记录](./docs/adversarial-review.md) | 三视角审查、多轮收敛、真机验证证据 |
 | [第三方声明](./THIRD-PARTY-NOTICES.md) | 捆绑子技能的来源与版权归属 |
 | [变更日志](./CHANGELOG.md) | 版本历史 |
 
 ## 文件结构
 
 ```
-deep-research-plus-skills/
-├── SKILL.md                        # 技能主文件 v1.3.1（跨平台编排、分档、闸门、能力降级矩阵、反例黑名单、使用示例）
-├── sub-skills/                     # 捆绑的 4 个子技能（克隆即完整可用）
-│   ├── deep-research/              # 结构化主干：四阶段流程 + 5 个子命令 + 搜索 agent（22 文件）
-│   ├── research/                   # 一手来源调研纪律（单文件）
-│   ├── agent-reach/                # 14 平台社媒源路由
-│   └── market-researcher/          # 商业标注规范
-├── docs/
-│   ├── user-guide.md               # 用户手册（v1.3.0）
-│   └── technical-manual.md         # 技术手册（v1.3.0）
-├── THIRD-PARTY-NOTICES.md          # 第三方子技能版权声明
-├── CHANGELOG.md                    # 版本历史
-├── LICENSE                         # MIT（覆盖编排层，不含 sub-skills/）
-└── .gitignore
+deep-research-plus/
+├── SKILL.md                     # 技能入口（版本单一事实源）
+├── manifest.json                # 包清单 + 文件登记
+├── scripts/drp.py               # 工具层（单文件，零硬依赖）
+├── checklists/skill_audit.yaml  # 八条机器规则
+├── docs/                        # 双手册 + 审查记录 + 概念图
+├── tests/                       # 92 条回归（含失败路径）
+├── sub-skills/                  # 四个子技能（仅仓库，不随 zip）
+└── dist/                        # 发布产物（不入库）
 ```
 
 ## 版本号规范
 
-版本号单一来源：`SKILL.md` frontmatter 的 `version` 字段。每次发布自动递增并同步更新 CHANGELOG、两份手册头部标注与 git tag（`vX.Y.Z`）。
+`SKILL.md` 的 `version` 是唯一事实源。`bump` 按 CHANGELOG `[Unreleased]` 判定递增级别（BREAKING → major，feat/新增 → minor，其余 → patch），并同步 `manifest.json`、`README.md`、`docs/*.md` 的版本与更新日期。`package` 先递增再校验，校验不过不出包。
 
 ## License
 
-MIT — 见 [LICENSE](./LICENSE)
+MIT（根目录许可不覆盖 `sub-skills/`，见 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)）

@@ -1,7 +1,6 @@
-*.zip
+__pycache__/
+.pytest_cache/
+dist/
+*.pyc
+.workbuddy/
 .DS_Store
-Thumbs.db
-research-benchmark/
-*/results/
-*/outline.yaml
-*/fields.yaml

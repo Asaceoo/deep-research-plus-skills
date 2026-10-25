@@ -1,0 +1,14 @@
+item_id: 3
+title: Weaviate 性能口径
+status: done
+findings:
+  - id: f3
+    claim: 官方文档给出单节点 QPS 基线，但未标注 batch size
+    value: 1200 QPS（官方口径）
+    field: perf
+    source_url: https://weaviate.io/developers/weaviate/concepts/performance
+    source_type: official
+    date: 2026-08-12
+    polarity: neutral
+uncertainties:
+  - 官方口径，未见第三方复现
