@@ -1,6 +1,6 @@
 # 技术手册
 
-> 版本：1.4.1 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.5.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 设计目标与不变量
 
@@ -50,6 +50,7 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | `items[].kind` | enum | 否 | `normal`（默认）/ `counter` |
 | `items[].fields` | list[str] | 否 | 必须在 fields.yaml 中定义 |
 | `items[].status` | enum | 否 | `pending` / `done` / `partial` |
+| `items[].min_sources` | int | 否 | 来源数下限；缺省 = 档位基数（light 1 / standard 2 / deep 3）+ 反方条目 1 |
 
 档位与条目数：`light` 1-3，`standard` 4-8，`deep` ≥9。超出即 P0/P1 拦截。
 
@@ -88,6 +89,10 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | `decisions[].level` | enum | `decision` / `supporting` |
 | `decisions[].evidence` | list[str] | 必须全部命中 findings id，否则 P0（R5） |
 | `decisions[].flags` | list[str] | `single-source` / `high-risk`，由闸门强校验 |
+| `spot_checks[].decision_id` | str | 必须命中该决策 id（v1.5.0 起决策级强制） |
+| `spot_checks[].url` | str | 必须在该决策 `evidence` 推出的 URL 集合内 |
+| `spot_checks[].verdict` | enum | `supports` / `contradicts` / `blocked` |
+| `spot_checks[].note` | str | 开页看到什么，一句话 |
 | `conflicts[]` | list[str] | 进报告第 4 章 |
 | `uncovered[]` | list[str] | 进报告第 5 章 |
 | `corrections[]` | list[str] | 记录本轮评审改了什么 |
@@ -121,6 +126,11 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 - **单源判定**：`decisions[].evidence` 推出的 URL 去重集合大小为 1 → 必须含 `single-source`。
 - **高风险判定**：证据的 `source_type` 集合 ⊆ {`community`, `secondary`} 且 level=decision → 必须含 `high-risk`。
 - **字段覆盖判定**（v1.4.1 起为 P1）：`outline.items[].fields` 声明过的字段，必须至少被该 item 的一条 finding 的 `field` 命中。字段是 Phase 2 与用户确认过的契约，整块缺证等于契约破坏，不能只给警告。
+- **来源覆盖率**（v1.5.0 起）：每个 item 的独立 URL 数必须 ≥ 档位基数（light 1 / standard 2 / deep 3）+ 反方条目 1；`min_sources` 可显式覆盖。只搜一次就落盘会被 G-RES-017 拦。
+- **反方来源类型**：`kind: counter` 的 item 至少要有 1 条 `official` 或 `code` 来源，避免用单条社区吐槽充当反证（G-RES-018）。
+- **链接形态**：命中 `example.com` / `placeholder` / `does-not-exist` 等占位特征直接判 G-RES-019，不需要联网。
+- **链接核验（可选）**：`--check-links` 触发 HEAD 探测，2xx/3xx 视为可达、401/403/405/429 视为「反爬不可判」、404/410 判 G-RES-020、网络层失败判 G-RES-021。默认关闭，离线路径零网络依赖。
+- **开页留痕**：决策级结论必须有 `spot_checks` 记录（G-REV-013），且 `url` 必须落在该结论证据里（G-REV-014），`verdict` 三值枚举（G-REV-015）。这是把「承重引用逐条开页」从口头要求变成可查字段。
 - **复核轮次**：`rounds > 2` 直接失败，而不是警告——无限补搜是流程失控的典型信号。
 - **AI 腔**：正则黑名单在 `SKILL.md`（跳过「反例黑名单」章节）与 `report.md/review.yaml` 全文分别扫描；后者不豁免任何章节。
 
@@ -154,9 +164,9 @@ tests/                   单元 / 契约 / 端到端 / 负路径
 | CHK-001..009 | 清单规则命中 | 按 detail 修 SKILL.md 或补文件 |
 | G-OUT-001..018 | 大纲问题 | 见用户手册 §8 |
 | G-CON-001..005 | 未确认/日期非法/确认人缺失 | 补 confirmed 三件套 |
-| G-RES-001..016 | 证据缺失/链接非 https/日期非法/类型非法 | 补证据字段 |
-| G-REV-001..012 | 评审缺失/轮次超限/证据未绑定/未标标记 | 补 review.yaml |
-| G-REP-001..009 | 报告缺章/尾注未定义/裸域名/AI 腔 | 重跑 `report` |
+| G-RES-001..021 | 证据缺失 / 链接非 https / 日期非法 / 类型非法 / 来源数不足 / 占位链接 / 死链 | 补证据字段或换真实来源 |
+| G-REV-001..015 | 评审缺失 / 轮次超限 / 证据未绑定 / 未标标记 / 开页留痕缺失 | 补 review.yaml |
+| G-REP-001..011 | 报告缺章/尾注未定义/裸域名/AI 腔/缺数据截点/来源未分组 | 重跑 `report` |
 
 ## 7. YAML 解析层
 
@@ -203,7 +213,9 @@ python -m pytest tests -q
 python scripts/drp.py selfcheck
 ```
 
-负路径必须覆盖：http 链接、缺日期、裸域名、无反方条目、评审超 2 轮、证据 id 不存在、报告缺章、尾注未定义、AI 腔命中。
+负路径必须覆盖：http 链接、缺日期、裸域名、无反方条目、评审超 2 轮、证据 id 不存在、报告缺章、尾注未定义、AI 腔命中、来源数不足、反方缺官方源、占位链接、开页留痕缺失。
+
+两套 fixture 的定位不同：`tests/fixtures/pass` 用于源码仓库的单元与端到端回归；`checklists/fixtures/pass` 是精简版，随 zip 发布，供 `selfcheck` 在任何安装形态下跑满流水线。两者只保证闸门形态合规，**不保证链接真实可达**——加 `--check-links` 跑它们会报 G-RES-020，属预期。
 
 ## 10. 已知限制
 

@@ -1,7 +1,7 @@
 ---
 name: deep-research-plus
 description: "深度调研融合编排层：跨平台通用（Claude / Codex / Cursor / WorkBuddy / WPS AI / OpenCode / OpenClaw 等任何能读 Markdown 的智能体）。按话题类型路由信息源（官方一手来源 / 社媒社区信号 / 商业标注规范），跑「大纲→确认→并行深调→反方评审→报告」流水线，每条结论带一手引用，并用内置脚本做阶段闸门硬校验。Use when user asks 深度调研/深度研究/deep research/系统调研一个话题，或需要带引用的结构化调研报告。Triggers: '深度调研', '深度研究', '系统调研', 'deep research', '调研一下 X', '帮我深挖'."
-version: 1.4.1
+version: 1.5.0
 license: MIT
 visibility: "public"
 ---
@@ -57,7 +57,8 @@ visibility: "public"
 | `python scripts/drp.py init --workspace <dir> --topic "<话题>"` | 生成 outline.yaml / fields.yaml / review.yaml 骨架 | 目录非空且未加 --force |
 | `python scripts/drp.py gate --workspace <dir> --stage outline` | Phase 1 预检：条目互斥、反方条目存在、字段已定义 | 大纲不合格，返工 |
 | `python scripts/drp.py gate --stage confirm` | Phase 2 闸门：确认已落盘且含时间与人 | 用户未确认就开跑 |
-| `python scripts/drp.py gate --stage results` | Phase 3 校验：https 链接、日期、source_type、反方证据 | 证据不合格，禁入评审 |
+| `python scripts/drp.py gate --stage results` | Phase 3 校验：https 链接、日期、source_type、来源数下限、反方证据 | 证据不合格，禁入评审 |
+| `python scripts/drp.py gate --stage results --check-links` | 额外联网 HEAD 探测链接（默认关闭，保持离线零依赖） | 死链或不可达 |
 | `python scripts/drp.py gate --stage review` | Phase 3.5 校验：证据绑定、单源/高风险标记、轮次上限 | 评审走过场 |
 | `python scripts/drp.py report --workspace <dir>` | 渲染 report.md（六章结构 + 尾注引用） | 缺输入文件 |
 | `python scripts/drp.py gate --stage report` | Phase 4 校验：章节齐全、尾注可解析、无裸域名、无 AI 腔 | 报告不合格 |
@@ -100,6 +101,7 @@ visibility: "public"
 缺反方条目的大纲天然只收正面证据，`gate` 会直接判 P0 拦下。
 
 **引用纪律注入**：每个事实型字段必须含 `source_url`（https 完整链接）+ `date`（YYYY-MM-DD）+ `source_type`（official / code / secondary / community / journalism）。
+**来源数下限**：每个 item 至少要有「档位基数 + 反方条目加权」个独立 URL——light 1 / standard 2 / deep 3，`kind: counter` 再 +1；确有理由可在 outline 用 `min_sources` 显式覆盖。只搜一次就落盘会被 `gate --stage results` 判 G-RES-017。
 
 ### Phase 2 — 确认闸门（🛑 硬停）
 
@@ -161,13 +163,18 @@ decisions:
     level: decision        # decision | supporting
     evidence: [f1, f3]
     flags: [single-source]
+spot_checks:               # 承重引用开页留痕：决策级结论逐条记录
+  - decision_id: d1
+    url: https://example.com/doc   # 必须是该结论证据里的 URL
+    verdict: supports              # supports | contradicts | blocked
+    note: 页面第 2 节明确写 Apache-2.0
 conflicts: []
 uncovered: []
 corrections:
   - 删掉 1 条无证据结论，补搜 1 轮
 ```
 
-跑 `gate --stage review`，通过后再汇总。**去 AI 腔**：汇总行文时逐条过「反例黑名单」§R2。
+跑 `gate --stage review`，通过后再汇总。决策级结论没有 `spot_checks` 记录会被判 G-REV-013；`verdict: contradicts` 的结论必须改进「冲突与存疑」而不是留在 TL;DR。**去 AI 腔**：汇总行文时逐条过「反例黑名单」§R2。
 
 ### Phase 4 — 汇总报告
 

@@ -11,6 +11,15 @@ decisions:
     level: supporting
     evidence: [f5]
     flags: [single-source, high-risk]
+spot_checks:
+  - decision_id: d1
+    url: https://milvus.io/docs/overview.md
+    verdict: supports
+    note: 页面明确写 Apache-2.0，与结论一致
+  - decision_id: d1
+    url: https://github.com/qdrant/qdrant/blob/master/LICENSE
+    verdict: supports
+    note: LICENSE 原文为 Apache-2.0
 conflicts:
   - 官方 QPS 与三方 benchmark 口径不一致（batch size 未对齐），已并列保留
 uncovered:

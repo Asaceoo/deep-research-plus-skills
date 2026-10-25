@@ -1,6 +1,6 @@
 # 用户手册
 
-> 版本：1.4.1 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
+> 版本：1.5.0 ｜ 更新：2026-10-26 ｜ 适用技能：deep-research-plus
 
 ## 1. 这个技能替你做什么
 
@@ -131,6 +131,7 @@ python $D validate                      # 包自检
 python $D detect                        # 子技能探测 + 降级方案
 python $D init --workspace ./ws --topic "话题"
 python $D gate --workspace ./ws --stage outline|confirm|results|review|report
+python $D gate --workspace ./ws --stage results --check-links   # 可选：联网核验链接死活
 python $D report --workspace ./ws       # 渲染六章报告
 python $D bump --level auto             # 版本递增 + 文档同步
 python $D package                       # 出包（自动递增）
@@ -163,6 +164,10 @@ JSON 输出：任意子命令后加 `--json`，便于接 CI 或其它 agent。
 | 报 G-REV-008 | 单源结论没标 | 加 `flags: [single-source]` 或补第二个源 |
 | 报 G-REV-003 | 评审补搜超过 2 轮 | 停下，把没查到的写进 `uncovered` |
 | 报 G-RES-016 | outline 声明的字段没有任何证据覆盖（v1.4.1 起判失败） | 补该字段的 finding，或从 outline 删掉这个字段 |
+| 报 G-RES-017 | 某个条目的来源数不到下限（light 1 / standard 2 / deep 3，反方 +1） | 补第二个独立来源；确有理由可在 outline 写 `min_sources` 并说明 |
+| 报 G-RES-019 | 用了占位域名或示例链接 | 换成真实可访问链接 |
+| 报 G-REV-013 | 决策级结论没记录「开页核对」 | 在 `review.yaml` 的 `spot_checks` 补一条 |
+| 报 G-REP-010/011 | 报告缺数据截点或来源未分组 | 重跑 `drp.py report`（渲染器已自动带） |
 | 报 MAN-001 | `manifest.json` 版本和 `SKILL.md` 不一致 | 跑一次 `drp.py bump --level patch` 同步 |
 | `report` 后 gate 报 G-REP-005 | 尾注缺链接 | 检查 `review.yaml` 的 evidence id 是否存在 |
 | Windows 控制台中文乱码 | 终端编码非 UTF-8 | 脚本已强制 UTF-8 输出；仍有乱码时 `chcp 65001` |

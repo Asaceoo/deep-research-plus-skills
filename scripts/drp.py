@@ -30,6 +30,8 @@ import os
 import re
 import shutil
 import sys
+import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -40,6 +42,14 @@ TIERS = ("light", "standard", "deep")
 FIELD_TYPES = ("fact", "judgement")
 TIER_MAX_ITEMS = {"light": 3, "standard": 8}
 TIER_MIN_ITEMS = {"standard": 4, "deep": 9}
+# 每个 item 的来源数下限（反方条目额外 +1）；outline 可用 min_sources 覆盖
+DEFAULT_MIN_SOURCES = {"light": 1, "standard": 2, "deep": 3}
+# 明显不可能指向真实内容的链接特征（离线兜底，不联网）
+SUSPECT_URL_MARKERS = (
+    "example.com", "example.org", "example.net", "localhost", "127.0.0.1",
+    "placeholder", "does-not-exist", "/xxx", "tbd", "todo", "待补充",
+)
+SPOT_VERDICTS = ("supports", "contradicts", "blocked")
 
 REQUIRED_REPORT_SECTIONS = (
     "核心结论",
@@ -973,7 +983,7 @@ def _load_outline(workspace: Path, issues: list):
     return data
 
 
-def gate_outline(workspace: Path, strict: bool) -> list:
+def gate_outline(workspace: Path, strict: bool, check_links: bool = False) -> list:
     issues = []
     data = _load_outline(workspace, issues)
     if not data:
@@ -1040,7 +1050,7 @@ def gate_outline(workspace: Path, strict: bool) -> list:
     return issues
 
 
-def gate_confirm(workspace: Path, strict: bool) -> list:
+def gate_confirm(workspace: Path, strict: bool, check_links: bool = False) -> list:
     issues = []
     data = _load_outline(workspace, issues)
     if not data:
@@ -1083,12 +1093,43 @@ def collect_findings(workspace: Path) -> dict:
     return index
 
 
-def gate_results(workspace: Path, strict: bool) -> list:
+def _classify_status(code: int) -> tuple:
+    if 200 <= code < 400:
+        return ("ok", str(code))
+    if code in (401, 403, 405, 429):
+        return ("blocked", str(code))
+    if code in (404, 410):
+        return ("gone", str(code))
+    return ("unreachable", str(code))
+
+
+_NO_PROXY = False
+
+
+def _probe_link(url: str, timeout: float = 6.0) -> tuple:
+    """HEAD 探测；只有显式开 --check-links 才会被调用，默认路径不联网。"""
+    handlers = [urllib.request.ProxyHandler({})] if _NO_PROXY else []
+    opener = urllib.request.build_opener(*handlers)
+    request = urllib.request.Request(url, method="HEAD")
+    request.add_header("User-Agent", "drp-link-check/1.0 (+deep-research-plus)")
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            return _classify_status(int(getattr(response, "status", 200)))
+    except urllib.error.HTTPError as exc:
+        return _classify_status(exc.code)
+    except Exception as exc:  # 网络层：DNS/超时/证书
+        return ("unreachable", f"{type(exc).__name__}")
+
+
+def gate_results(workspace: Path, strict: bool, check_links: bool = False) -> list:
     issues = []
     outline = _load_outline(workspace, issues)
     items = [i for i in (outline.get("items") or []) if isinstance(i, dict)]
     if not items:
         return issues
+    tier = str(outline.get("tier") or "standard")
+    base_min = DEFAULT_MIN_SOURCES.get(tier, 2)
+    probe_cache = {}
     files = {p.name: p for p in _iter_results(workspace)}
     seen_ids = set()
     for item in items:
@@ -1115,7 +1156,7 @@ def gate_results(workspace: Path, strict: bool) -> list:
             negatives = [f for f in findings if isinstance(f, dict) and f.get("polarity") == "negative"]
             if not negatives and not (data.get("uncertainties") or []):
                 issues.append(Issue("G-RES-006", "P1", rel, "反方条目缺少 negative 证据或 uncertainty 记录"))
-        covered = set()
+        covered, urls, types = set(), set(), set()
         for pos, finding in enumerate(findings, 1):
             if not isinstance(finding, dict):
                 issues.append(Issue("G-RES-007", "P0", rel, f"findings[{pos}] 不是映射"))
@@ -1145,6 +1186,72 @@ def gate_results(workspace: Path, strict: bool) -> list:
                 issues.append(Issue("G-RES-015", "P0", rel, f"{fid or pos} source_type 非法：{stype!r}（允许 {SOURCE_TYPES}）"))
             if finding.get("field"):
                 covered.add(str(finding["field"]))
+            if url.startswith("https://"):
+                urls.add(url)
+            if stype:
+                types.add(stype)
+
+        # ---- 来源覆盖率（形状之外的第一层内容校验）----
+        if findings:
+            override = item.get("min_sources")
+            try:
+                need = int(override) if override not in (None, "") else base_min + (
+                    1 if item.get("kind") == "counter" else 0
+                )
+            except (TypeError, ValueError):
+                issues.append(Issue("G-RES-017", "P1", rel, f"min_sources 非整数：{override!r}"))
+                need = base_min
+            if len(urls) < need:
+                issues.append(
+                    Issue(
+                        "G-RES-017",
+                        "P1",
+                        rel,
+                        f"来源数 {len(urls)} 少于下限 {need}（档位 {tier}"
+                        f"{'，反方条目 +1' if item.get('kind') == 'counter' else ''}）",
+                        "补第二个独立来源，或在 outline 里显式下调 min_sources",
+                    )
+                )
+            if item.get("kind") == "counter" and urls and not (types & {"official", "code"}):
+                issues.append(
+                    Issue(
+                        "G-RES-018",
+                        "P1",
+                        rel,
+                        f"反方条目只靠 {'/'.join(sorted(types))} 支撑，缺官方或代码类来源",
+                        "补一条官方文档或仓库 issue，避免用单条吐槽充当反证",
+                    )
+                )
+            suspect = sorted(u for u in urls if any(m in u.lower() for m in SUSPECT_URL_MARKERS))
+            for bad in suspect:
+                issues.append(
+                    Issue(
+                        "G-RES-019",
+                        "P1",
+                        rel,
+                        f"链接形态可疑（占位/示例域名）：{bad}",
+                        "换成真实可访问链接；已核验的链接不受此限",
+                    )
+                )
+            if check_links:
+                for url in sorted(urls):
+                    if url not in probe_cache:
+                        probe_cache[url] = _probe_link(url)
+                    status, detail = probe_cache[url]
+                    if status == "gone":
+                        issues.append(
+                            Issue("G-RES-020", "P1", rel, f"链接已失效（{detail}）：{url}")
+                        )
+                    elif status == "unreachable":
+                        issues.append(
+                            Issue(
+                                "G-RES-021",
+                                "P1",
+                                rel,
+                                f"链接不可达（{detail}）：{url}",
+                                "网络受限时改用离线模式；确认是死链再替换",
+                            )
+                        )
         required_fields = [str(f) for f in (item.get("fields") or [])]
         missing = [f for f in required_fields if f not in covered]
         if required_fields and missing and findings:
@@ -1160,7 +1267,7 @@ def gate_results(workspace: Path, strict: bool) -> list:
     return issues
 
 
-def gate_review(workspace: Path, strict: bool) -> list:
+def gate_review(workspace: Path, strict: bool, check_links: bool = False) -> list:
     issues = []
     path = workspace / "review.yaml"
     if not path.exists():
@@ -1176,6 +1283,22 @@ def gate_review(workspace: Path, strict: bool) -> list:
     if not decisions:
         issues.append(Issue("G-REV-004", "P0", "review.yaml", "decisions 为空，报告没有决策级结论"))
     index = collect_findings(workspace)
+    checks = [c for c in (data.get("spot_checks") or []) if isinstance(c, dict)]
+    by_decision = {}
+    for check in checks:
+        did = str(check.get("decision_id") or "")
+        verdict = str(check.get("verdict") or "")
+        if verdict not in SPOT_VERDICTS:
+            issues.append(
+                Issue(
+                    "G-REV-015",
+                    "P1",
+                    "review.yaml",
+                    f"spot_check 指向 {did or '?'} 的 verdict 非法：{verdict!r}（允许 {SPOT_VERDICTS}）",
+                )
+            )
+            continue
+        by_decision.setdefault(did, []).append(check)
     for pos, decision in enumerate(decisions, 1):
         if not isinstance(decision, dict):
             issues.append(Issue("G-REV-005", "P0", "review.yaml", f"decisions[{pos}] 不是映射"))
@@ -1195,6 +1318,28 @@ def gate_review(workspace: Path, strict: bool) -> list:
                 issues.append(Issue("G-REV-008", "P0", "review.yaml", f"{cid} 仅单源支撑但未标 single-source", "R6"))
             if types and types <= {"community", "secondary"} and "high-risk" not in flags:
                 issues.append(Issue("G-REV-009", "P0", "review.yaml", f"{cid} 仅二手/社区源支撑但未标 high-risk", "R6"))
+            opened = by_decision.get(cid) or []
+            if not opened:
+                issues.append(
+                    Issue(
+                        "G-REV-013",
+                        "P1",
+                        "review.yaml",
+                        f"{cid} 缺承重引用开页留痕（spot_checks）",
+                        "决策级结论必须记录是否真的打开源页面核对过内容",
+                    )
+                )
+            else:
+                stray = [c for c in opened if str(c.get("url") or "") not in urls]
+                if stray:
+                    issues.append(
+                        Issue(
+                            "G-REV-014",
+                            "P1",
+                            "review.yaml",
+                            f"{cid} 的 spot_check.url 不在该结论的证据里：{stray[0].get('url')}",
+                        )
+                    )
         claim = str(decision.get("claim") or "")
         if not claim.strip():
             issues.append(Issue("G-REV-010", "P0", "review.yaml", f"{cid} claim 为空"))
@@ -1206,7 +1351,7 @@ def gate_review(workspace: Path, strict: bool) -> list:
     return issues
 
 
-def gate_report(workspace: Path, strict: bool) -> list:
+def gate_report(workspace: Path, strict: bool, check_links: bool = False) -> list:
     issues = []
     path = workspace / "report.md"
     if not path.exists():
@@ -1235,6 +1380,13 @@ def gate_report(workspace: Path, strict: bool) -> list:
         for line_no, line in enumerate(text.splitlines(), 1):
             if re.search(pattern, line):
                 issues.append(Issue("G-REP-008", "P1", f"report.md:{line_no}", f"命中 AI 腔：{pattern}", "R2"))
+    if not re.search(r"数据截点", text):
+        issues.append(
+            Issue("G-REP-010", "P2", "report.md", "对比总表未注明数据截点", "契约要求「所见即最新」，需写明截点")
+        )
+    source_part = re.search(r"##\s*6\.?\s*来源清单(.*)$", text, re.S)
+    if source_part and "###" not in source_part.group(1):
+        issues.append(Issue("G-REP-011", "P2", "report.md", "来源清单未按 source_type 分组"))
     review_path = workspace / "review.yaml"
     if review_path.exists():
         decisions = read_yaml(review_path).get("decisions") or []
@@ -1256,12 +1408,14 @@ GATES = {
 
 
 def cmd_gate(args) -> int:
+    global _NO_PROXY
+    _NO_PROXY = bool(getattr(args, "no_proxy", False))
     workspace = Path(args.workspace).resolve()
     stages = [args.stage] if args.stage != "all" else ["outline", "confirm", "results", "review", "report"]
     issues = []
     rc = 0
     for stage in stages:
-        stage_issues = GATES[stage](workspace, args.strict)
+        stage_issues = GATES[stage](workspace, args.strict, args.check_links)
         issues.extend(stage_issues)
         if not args.json:
             rc = max(rc, report_issues(f"gate:{stage}", stage_issues, False))
@@ -1322,6 +1476,12 @@ def render_report(workspace: Path) -> str:
     lines.append("")
     lines.append("## 2. 对比总表")
     lines.append("")
+    evidence_dates = sorted(
+        str(f.get("date")) for f in index.values() if DATE_RE.match(str(f.get("date") or ""))
+    )
+    if evidence_dates:
+        lines.append(f"> 数据截点：{evidence_dates[-1]}（各条证据日期见第 6 章）")
+        lines.append("")
     field_names = []
     for finding in index.values():
         if finding.get("field") and str(finding["field"]) not in field_names:
@@ -1380,10 +1540,15 @@ def render_report(workspace: Path) -> str:
     lines.append("")
     lines.append("## 6. 来源清单")
     lines.append("")
+    grouped = {}
     for url, date, stype in order:
-        key = url_index[url]
-        lines.append(f"[^{key}]: <{url}> ｜ {date} ｜ `{stype}`")
-    lines.append("")
+        grouped.setdefault(stype, []).append((url, date))
+    for stype in sorted(grouped, key=lambda s: (-len(grouped[s]), s)):
+        lines.append(f"### {stype}（{len(grouped[stype])} 条）")
+        lines.append("")
+        for url, date in grouped[stype]:
+            lines.append(f"[^{url_index[url]}]: <{url}> ｜ {date} ｜ `{stype}`")
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -1822,6 +1987,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_gate.add_argument("--workspace", required=True)
     p_gate.add_argument("--stage", default="all", choices=list(GATES) + ["all"])
     p_gate.add_argument("--strict", action="store_true")
+    p_gate.add_argument(
+        "--check-links",
+        action="store_true",
+        help="联网 HEAD 探测证据链接（默认关闭，保持离线零依赖）",
+    )
+    p_gate.add_argument("--no-proxy", action="store_true", help="链接探测时绕过系统代理")
     _shared(p_gate)
     p_gate.set_defaults(func=cmd_gate)
 

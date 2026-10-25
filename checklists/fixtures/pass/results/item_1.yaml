@@ -6,8 +6,16 @@ findings:
     claim: 候选 A 官方文档给出吞吐基线
     value: 1200 req/s
     field: point
-    source_url: https://example.com/a/docs
+    source_url: https://docs.python.org/3/library/asyncio.html
     source_type: official
     date: 2026-09-01
+    polarity: positive
+  - id: c6
+    claim: 仓库基准脚本可复现官方数字
+    value: 可复现
+    field: point
+    source_url: https://github.com/python/cpython
+    source_type: code
+    date: 2026-09-03
     polarity: positive
 uncertainties: []

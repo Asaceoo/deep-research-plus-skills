@@ -10,4 +10,12 @@ findings:
     source_type: code
     date: 2026-09-30
     polarity: positive
+  - id: f9
+    claim: 官方文档明示商用无需额外授权
+    value: 无需商业授权
+    field: license
+    source_url: https://qdrant.tech/documentation/guides/licensing/
+    source_type: official
+    date: 2026-09-28
+    polarity: positive
 uncertainties: []

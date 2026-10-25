@@ -6,8 +6,16 @@ findings:
     claim: 候选 B 仓库 README 声明的吞吐基线较低
     value: 900 req/s
     field: point
-    source_url: https://github.com/example/b
+    source_url: https://github.com/nodejs/node
     source_type: code
     date: 2026-09-02
+    polarity: neutral
+  - id: c7
+    claim: 官方 API 文档给出默认并发与超时参数
+    value: 默认并发 10
+    field: point
+    source_url: https://nodejs.org/api/http.html
+    source_type: official
+    date: 2026-09-04
     polarity: neutral
 uncertainties: []

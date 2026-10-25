@@ -6,9 +6,17 @@ findings:
     claim: 三方基准测试的延迟差距在可比较范围内
     value: 延迟差距 12%
     field: point
-    source_url: https://example.org/bench
+    source_url: https://web.dev/vitals/
     source_type: secondary
     date: 2026-08-15
+    polarity: neutral
+  - id: c8
+    claim: MDN 对性能指标的定义与基准测试口径一致
+    value: 口径一致
+    field: point
+    source_url: https://developer.mozilla.org/en-US/docs/Web/Performance
+    source_type: official
+    date: 2026-08-18
     polarity: neutral
 uncertainties:
   - 基准数据集与生产分布不一致

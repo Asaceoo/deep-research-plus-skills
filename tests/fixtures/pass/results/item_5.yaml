@@ -10,5 +10,13 @@ findings:
     source_type: secondary
     date: 2026-07-01
     polarity: neutral
+  - id: f12
+    claim: 仓库自带 benchmark 脚本与参数，可复现官方数字
+    value: 可复现
+    field: perf
+    source_url: https://github.com/erikbern/ann-benchmarks
+    source_type: code
+    date: 2026-07-08
+    polarity: neutral
 uncertainties:
   - benchmark 数据集与生产分布不一致

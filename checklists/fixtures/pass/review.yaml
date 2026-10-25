@@ -11,6 +11,11 @@ decisions:
     level: supporting
     evidence: [c4]
     flags: [single-source, high-risk]
+spot_checks:
+  - decision_id: d1
+    url: https://docs.python.org/3/library/asyncio.html
+    verdict: supports
+    note: 页面确实给出吞吐基线，未夸大口径
 conflicts:
   - 官方吞吐与三方基准口径未对齐，已并列保留
 uncovered:

@@ -10,5 +10,13 @@ findings:
     source_type: official
     date: 2026-08-12
     polarity: neutral
+  - id: f10
+    claim: 第三方复测的 QPS 约为官方数字的一半，差异主要来自 batch size
+    value: 600 QPS（第三方复测）
+    field: perf
+    source_url: https://blog.vespa.ai/ann-benchmarks/
+    source_type: secondary
+    date: 2026-08-20
+    polarity: negative
 uncertainties:
   - 官方口径，未见第三方复现

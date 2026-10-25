@@ -1,6 +1,6 @@
 # Deep Research Plus
 
-> 版本：1.4.1 ｜ 更新：2026-10-26
+> 版本：1.5.0 ｜ 更新：2026-10-26
 
 ![version](https://img.shields.io/badge/version-1.4.0-blue) ![license](https://img.shields.io/badge/license-MIT-green) ![python](https://img.shields.io/badge/python-3.8%2B%20%7C%20%E9%9B%B6%E4%BE%9D%E8%B5%96-3776ab)
 
@@ -101,6 +101,7 @@ python $D gate --workspace ./tts --stage report                     # 报告合�
 | `selfcheck` | 清单逐条复核 + 内置流水线回归 |
 
 退出码：`0` 通过 / `1` 有违规 / `2` 用法或环境错误。全部子命令支持 `--json`，便于接 CI 或其它 agent。
+`gate --stage results --check-links` 额外联网 HEAD 探测证据链接（默认关闭，离线路径仍是零网络依赖）。
 
 ## 产物
 
@@ -127,7 +128,7 @@ deep-research-plus/
 ├── scripts/drp.py               # 工具层（单文件，零硬依赖）
 ├── checklists/skill_audit.yaml  # 八条机器规则
 ├── docs/                        # 双手册 + 审查记录 + 概念图
-├── tests/                       # 100 条回归（含失败路径）
+├── tests/                       # 112 条回归（含失败路径）
 ├── sub-skills/                  # 四个子技能（仅仓库，不随 zip）
 └── dist/                        # 发布产物（不入库）
 ```

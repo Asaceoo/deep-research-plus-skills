@@ -10,4 +10,12 @@ findings:
     source_type: official
     date: 2026-09-18
     polarity: positive
+  - id: f8
+    claim: 仓库 LICENSE 文件确认为 Apache-2.0，与文档口径一致
+    value: Apache-2.0
+    field: license
+    source_url: https://github.com/milvus-io/milvus/blob/master/LICENSE
+    source_type: code
+    date: 2026-09-19
+    polarity: positive
 uncertainties: []

@@ -6,9 +6,25 @@ findings:
     claim: 社区反馈记忆占用高于官方标注
     value: 超出约 30%
     field: point
-    source_url: https://example.net/thread/42
+    source_url: https://news.ycombinator.com/item?id=1
     source_type: community
     date: 2026-09-10
+    polarity: negative
+  - id: c5
+    claim: 仓库 issue 复现了内存增长问题
+    value: 可复现
+    field: point
+    source_url: https://github.com/psf/requests/issues/1
+    source_type: code
+    date: 2026-09-11
+    polarity: negative
+  - id: c9
+    claim: 规范文档说明内存开销与连接数相关
+    value: 连接数相关
+    field: point
+    source_url: https://www.rfc-editor.org/rfc/rfc9110.html
+    source_type: official
+    date: 2026-09-12
     polarity: negative
 uncertainties:
   - 单条社区反馈，样本不足

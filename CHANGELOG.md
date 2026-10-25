@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-26
+
+- **来源覆盖率下限**：每个 item 的独立 URL 数必须 ≥ 档位基数（light 1 / standard 2 / deep 3）+ 反方条目 1，`min_sources` 可显式覆盖；只搜一次就落盘会被 G-RES-017 拦下
+- **反方来源类型下限**：`kind: counter` 至少要有 1 条 `official` 或 `code` 来源，避免拿单条社区吐槽充当反证（G-RES-018）
+- **开页留痕**：`review.yaml` 增 `spot_checks`（decision_id / url / verdict / note），决策级结论必须记录是否真的打开源页面核对过；缺记录判 G-REV-013，url 不在证据里判 G-REV-014，verdict 非法判 G-REV-015
+- **可选链接核验**：`gate --stage results --check-links` 走 HEAD 探测，2xx/3xx 可达、401/403/405/429 视为反爬不可判、404/410 判 G-RES-020、网络层失败判 G-RES-021；默认关闭，离线路径零网络依赖
+- **离线占位链接识别**：命中 `example.com` / `placeholder` / `does-not-exist` 等特征直接判 G-RES-019，不需要联网
+- **报告渲染补齐两处契约**：对比总表自动写「数据截点」，来源清单按 `source_type` 分组；对应新增 G-REP-010 / G-REP-011（P2）
+- 测试 100 → 112 条，补足来源覆盖率、反方来源类型、占位链接、状态分类、链接探测、开页留痕、渲染契约七类用例
+- 两套 fixture 全部补到「每项 2 个来源、反方 3 个来源含官方源」并加 `spot_checks`，与新版闸门对齐
+
 ## [1.4.1] - 2026-10-26
 
 - **字段覆盖缺失从 P2 升为 P1**：`outline` 里声明过的字段若没有任何 finding 覆盖，results 闸门直接失败。原实现只给警告，等于「说好要查的字段整块缺失仍能放行」，报告缺列却显示全绿

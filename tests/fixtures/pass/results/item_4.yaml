@@ -18,5 +18,13 @@ findings:
     source_type: code
     date: 2026-09-22
     polarity: negative
+  - id: f11
+    claim: 官方文档承认内存需求随集合规模线性增长，未给出上限
+    value: 内存随规模线性增长
+    field: ecosystem
+    source_url: https://milvus.io/docs/configure_mem_size.md
+    source_type: official
+    date: 2026-09-24
+    polarity: negative
 uncertainties:
   - 社区样本量有限，不能代表全部用户
